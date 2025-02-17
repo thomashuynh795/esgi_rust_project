@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<body>
+<div id="imageContainer"></div>
+<script>
+    const socket = new WebSocket('ws://localhost:8080');
+
+    socket.onmessage = function (event) {
+        const img = document.createElement('img');
+        img.src = 'data:image/png;base64,' + event.data;
+        container = document.getElementById('imageContainer');
+        container.innerHTML = '';
+        container.appendChild(img);
+    };
+</script>
+</body>
+</html>
