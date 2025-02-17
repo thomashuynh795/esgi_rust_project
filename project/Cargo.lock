@@ -5,6 +5,10 @@ version = 3
 [[package]]
 name = "client"
 version = "0.1.0"
+dependencies = [
+ "grid",
+ "shared",
+]
 
 [[package]]
 name = "grid"
@@ -13,6 +17,10 @@ version = "0.1.0"
 [[package]]
 name = "server"
 version = "0.1.0"
+dependencies = [
+ "grid",
+ "shared",
+]
 
 [[package]]
 name = "shared"
