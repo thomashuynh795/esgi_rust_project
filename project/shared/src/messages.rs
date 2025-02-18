@@ -72,7 +72,6 @@ pub enum Challenge {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(tag = "type", content = "data")]
 pub enum GameMessage {
     RegisterTeam(RegisterTeam),
     RegisterTeamResult(RegisterTeamResult),
