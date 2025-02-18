@@ -8,11 +8,11 @@ pub enum RegistrationError {
     TooManyPlayers,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum RelativeDirection {
-    Front,
+    Forward,
     Right,
-    Back,
+    Backward,
     Left,
 }
 

@@ -43,7 +43,7 @@ impl GameMessage {
     /// * Reading the TCP stream fails.
     /// * The message deserialization fails.
     pub fn receive(stream: &mut TcpStream) -> std::io::Result<Self> {
-        // The size is an u32, so it is 4 bytes long so creates an array of 4 bytes with value 0.
+        // The size is an u32, so it is 4 bytes long. Creates an array of 4 bytes with value 0.
         let mut message_size_buffer: [u8; 4] = [0u8; 4];
 
         // From the stream, receives the size of the message as an array of 4 bytes and
@@ -51,8 +51,9 @@ impl GameMessage {
         stream.read_exact(&mut message_size_buffer)?;
 
         // Converts safely the message size buffer to a u32 and then to a usize.
-        let size: usize = usize::try_from(u32::from_le_bytes(message_size_buffer))
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        let size: usize = usize::try_from(u32::from_le_bytes(message_size_buffer)).map_err(
+            |e: std::num::TryFromIntError| std::io::Error::new(std::io::ErrorKind::InvalidData, e),
+        )?;
 
         // Creates a vector of `size` bytes.
         let mut buf: Vec<u8> = vec![0u8; size];
