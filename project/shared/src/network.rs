@@ -1,6 +1,7 @@
-use crate::messages::GameMessage;
 use std::io::{Read, Write};
 use std::net::TcpStream;
+
+use crate::types::message::GameMessage;
 
 impl GameMessage {
     /// Serializes the `GameMessage` into JSON format,

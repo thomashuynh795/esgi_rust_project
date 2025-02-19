@@ -1,5 +1,9 @@
-use shared::messages::{Action, GameMessage, RegisterTeam, RegisterTeamResult, RelativeDirection};
 use std::net::TcpStream;
+
+use shared::types::{
+    action::{Action, RelativeDirection},
+    message::{GameMessage, RegisterTeam, RegisterTeamResult},
+};
 
 fn main() -> std::io::Result<()> {
     let mut stream: TcpStream = TcpStream::connect("localhost:8778")?;
