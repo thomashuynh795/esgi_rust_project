@@ -1,80 +1,48 @@
-use std::env;
-use std::io::{self};
-use std::net::TcpStream;
+#[macro_use]
+extern crate shared;
 
-use shared::types::{
-    action::{Action, RelativeDirection},
-    message::{GameMessage, RegisterTeam, RegisterTeamResult},
+use grid::maze::{choose_next_move, send_and_receive, MazeState};
+use shared::{
+    types::action::RelativeDirection,
+    utils::{connect_to_server, register_player, register_team},
 };
+use std::env;
+use std::io;
 
-fn main() -> std::io::Result<()> {
+fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        eprintln!("Prompt: worker <server_address>");
+        log_error!("Prompt: worker <server_address>");
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "Server address required.",
+            "Server address required",
         ));
     }
-    let server_address = &args[1];
+    let server_address: &String = &args[1];
 
-    println!("Connection to the address {}.", server_address);
+    // Connects to the server and registers the team.
+    let mut stream: std::net::TcpStream = connect_to_server(server_address)?;
+    let registration_token: String = register_team(&mut stream)?;
 
-    let mut stream: TcpStream = match TcpStream::connect(server_address) {
-        Ok(s) => {
-            println!("Connected to the server.");
-            s
-        }
-        Err(e) => {
-            eprintln!("Connection error: {}.", e);
-            return Err(e);
-        }
-    };
+    // Connection to register the player.
+    let mut stream: std::net::TcpStream = connect_to_server(server_address)?;
+    register_player(&mut stream, &registration_token)?;
 
-    let register_team: RegisterTeam = RegisterTeam {
-        name: String::from("team_1"),
-    };
-    let message: GameMessage = GameMessage::RegisterTeam(register_team);
-    message.send(&mut stream)?;
-    println!("Registration message sent to the server.");
+    // Explore the maze using the Tremaux algorithm.
+    let mut maze: MazeState = MazeState::new(20, 20, RelativeDirection::Front);
+    let max_moves: i32 = 100;
 
-    match GameMessage::receive(&mut stream)? {
-        GameMessage::RegisterTeamResult(RegisterTeamResult::Ok {
-            expected_players,
-            registration_token,
-        }) => {
-            println!(
-                "Team registered. Waiting for players: {}. Registering token: {}.",
-                expected_players, registration_token
-            );
-        }
-        GameMessage::RegisterTeamResult(RegisterTeamResult::Err(e)) => {
-            eprintln!("Registration failed: {:?}.", e);
-            return Err(io::Error::new(io::ErrorKind::Other, "Registration failed."));
-        }
-        _ => {
-            eprintln!("Unexpected server response.");
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Unexpected server response.",
-            ));
+    for _ in 0..max_moves {
+        if let Some(next_move) = choose_next_move(&mut maze) {
+            log_info!("Next move (Tremaux): {:?}", next_move);
+            send_and_receive(&mut stream, next_move, &mut maze)?;
+        } else {
+            log_warning!("No valid move found, stopping");
+            break;
         }
     }
 
-    let moves: Vec<RelativeDirection> = vec![
-        RelativeDirection::Right,
-        RelativeDirection::Up,
-        RelativeDirection::Left,
-        RelativeDirection::Down,
-    ];
-
-    for direction in moves {
-        let action: GameMessage = GameMessage::Action(Action::MoveTo(direction));
-        action.send(&mut stream)?;
-        println!("Movement sent: {:?}.", direction);
-    }
-
-    println!("Movements sent.");
+    log_info!("Exploration finished");
 
     return Ok(());
 }

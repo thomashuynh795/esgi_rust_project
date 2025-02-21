@@ -1,6 +1,11 @@
-pub fn log_message(message: &str) {
-    println!("LOG: {}", message);
-}
+use crate::{
+    log_error, log_info, log_warning,
+    types::message::{
+        GameMessage, RegisterTeam, RegisterTeamResult, SubscribePlayer, SubscribePlayerResult,
+    },
+};
+use std::io::{self};
+use std::net::TcpStream;
 
 /// Decodes a Base64-encoded string into an array of bytes.
 ///
@@ -85,5 +90,124 @@ mod tests {
         let encoded2: &str = "abc*";
         assert!(decode_base64(encoded1).is_err());
         assert!(decode_base64(encoded2).is_err());
+    }
+}
+
+/// Connects to the server and returns the TCP stream.
+///
+/// # Arguments
+///
+/// * `server_address` - The address of the server.
+///
+/// # Returns
+///
+/// An `io::Result` with the TCP stream if the connection was successful, or an error message.
+///
+/// # Errors
+///
+/// Returns an error if the connection to the server failed.
+pub fn connect_to_server(server_address: &str) -> io::Result<TcpStream> {
+    log_info!("Connecting to {}", server_address);
+    match TcpStream::connect(server_address) {
+        Ok(s) => {
+            log_info!("Connected to the server");
+            Ok(s)
+        }
+        Err(e) => {
+            log_error!("Connection error: {}", e);
+            Err(e)
+        }
+    }
+}
+
+/// Registers a team and returns the registration token.
+///
+/// # Arguments
+///
+/// * `stream` - A mutable reference to the TCP stream.
+///
+/// # Returns
+///
+/// The registration token if the registration was successful, or an error message.
+///
+/// # Errors
+///
+/// Returns an error if the server response is unexpected.
+pub fn register_team(stream: &mut TcpStream) -> io::Result<String> {
+    let register_team = RegisterTeam {
+        name: String::from("team_1"),
+    };
+    let message = GameMessage::RegisterTeam(register_team);
+    message.send(stream)?;
+    log_info!("Registration message sent to the server");
+
+    match GameMessage::receive(stream)? {
+        GameMessage::RegisterTeamResult(RegisterTeamResult::Ok {
+            expected_players,
+            registration_token,
+        }) => {
+            log_info!(
+                "Team registered. Waiting for players: {}. Registering token: {}",
+                expected_players,
+                registration_token
+            );
+            Ok(registration_token)
+        }
+        GameMessage::RegisterTeamResult(RegisterTeamResult::Err(e)) => {
+            log_error!("Registration failed: {:?}", e);
+            Err(io::Error::new(io::ErrorKind::Other, "Registration failed"))
+        }
+        _ => {
+            log_warning!("Unexpected server response");
+            Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Unexpected server response",
+            ))
+        }
+    }
+}
+
+/// Registers a player by using the registration token.
+///
+/// # Arguments
+///
+/// * `stream` - A mutable reference to the TCP stream.
+/// * `registration_token` - The registration token of the team.
+///
+/// # Returns
+///
+/// An `io::Result` with the result of the registration.
+///
+/// # Errors
+///
+/// Returns an error if the server response is unexpected.
+pub fn register_player(stream: &mut TcpStream, registration_token: &str) -> io::Result<()> {
+    let subscribe_player = SubscribePlayer {
+        name: String::from("player_1"),
+        registration_token: registration_token.to_string(),
+    };
+    let message = GameMessage::SubscribePlayer(subscribe_player);
+    message.send(stream)?;
+    log_info!("SubscribePlayer message sent");
+
+    match GameMessage::receive(stream)? {
+        GameMessage::SubscribePlayerResult(SubscribePlayerResult::Ok) => {
+            log_info!("Player successfully registered.");
+            Ok(())
+        }
+        GameMessage::SubscribePlayerResult(SubscribePlayerResult::Err(e)) => {
+            log_error!("Player registration failed: {:?}", e);
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Player registration failed",
+            ))
+        }
+        _ => {
+            log_warning!("Unexpected server response");
+            Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Unexpected server response",
+            ))
+        }
     }
 }
