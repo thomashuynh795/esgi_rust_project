@@ -1,13 +1,16 @@
 #[macro_use]
 extern crate shared;
 
-use grid::maze::{choose_next_move, send_and_receive, MazeState};
-use shared::{
-    types::action::RelativeDirection,
-    utils::{connect_to_server, register_player, register_team},
-};
+use grid::map::Map;
+use shared::utils::decode_base64;
+use shared::utils::{connect_to_server, register_player, register_team};
+use std::collections::HashMap;
 use std::env;
 use std::io;
+use std::net::{SocketAddr, TcpStream};
+use std::sync::{Arc, Mutex};
+
+const PLAYERS_NUMBER: usize = 3;
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -20,29 +23,58 @@ fn main() -> io::Result<()> {
     }
     let server_address: &String = &args[1];
 
-    // Connects to the server and registers the team.
-    let mut stream: std::net::TcpStream = connect_to_server(server_address)?;
-    let registration_token: String = register_team(&mut stream)?;
+    let mut registering_team_stream: TcpStream = connect_to_server(server_address)?;
+    let registration_token: String = register_team(&mut registering_team_stream)?;
 
-    // Connection to register the player.
-    let mut stream: std::net::TcpStream = connect_to_server(server_address)?;
-    register_player(&mut stream, &registration_token)?;
+    let mut player_maps: HashMap<SocketAddr, (Arc<Mutex<TcpStream>>, Map)> = HashMap::new();
 
-    // Explore the maze using the Tremaux algorithm.
-    let mut maze: MazeState = MazeState::new(20, 20, RelativeDirection::Front);
-    let max_moves: i32 = 100;
+    for i in 0..PLAYERS_NUMBER {
+        let stream = match connect_to_server(server_address) {
+            Ok(s) => Arc::new(Mutex::new(s)),
+            Err(e) => {
+                log_error!("Failed to connect player {}: {}", i + 1, e);
+                return Err(e);
+            }
+        };
 
-    for _ in 0..max_moves {
-        if let Some(next_move) = choose_next_move(&mut maze) {
-            log_info!("Next move (Tremaux): {:?}", next_move);
-            send_and_receive(&mut stream, next_move, &mut maze)?;
-        } else {
-            log_warning!("No valid move found, stopping");
-            break;
+        let addr = match stream.lock().unwrap().peer_addr() {
+            Ok(a) => a,
+            Err(e) => {
+                log_error!("Failed to get peer address for player {}: {}", i + 1, e);
+                return Err(e);
+            }
+        };
+
+        let player_name = format!("Player {}", i + 1);
+        let encoded_radar = match register_player(
+            &mut stream.lock().unwrap(),
+            &registration_token,
+            &player_name,
+        ) {
+            Ok(r) => r,
+            Err(e) => {
+                log_error!("Failed to register {}: {}", player_name, e);
+                return Err(e);
+            }
+        };
+
+        let player_map = match Map::new(&encoded_radar) {
+            Ok(m) => m,
+            Err(e) => {
+                log_error!("Failed to initialize map for {}: {}", player_name, e);
+                return Err(io::Error::new(io::ErrorKind::Other, e));
+            }
+        };
+
+        player_maps.insert(addr, (stream.clone(), player_map));
+
+        if let Some((_, map)) = player_maps.get(&addr) {
+            println!("Map of {}:", player_name);
+            map.print();
         }
     }
 
-    log_info!("Exploration finished");
+    log_info!("All players registered");
 
     return Ok(());
 }

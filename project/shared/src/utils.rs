@@ -107,15 +107,15 @@ mod tests {
 ///
 /// Returns an error if the connection to the server failed.
 pub fn connect_to_server(server_address: &str) -> io::Result<TcpStream> {
-    log_info!("Connecting to {}", server_address);
+    log_info!("Connecting to {}...", server_address);
     match TcpStream::connect(server_address) {
-        Ok(s) => {
+        Ok(stream) => {
             log_info!("Connected to the server");
-            Ok(s)
+            return Ok(stream);
         }
-        Err(e) => {
-            log_error!("Connection error: {}", e);
-            Err(e)
+        Err(error) => {
+            log_error!("Connection error: {}", error);
+            return Err(error);
         }
     }
 }
@@ -176,38 +176,71 @@ pub fn register_team(stream: &mut TcpStream) -> io::Result<String> {
 ///
 /// # Returns
 ///
-/// An `io::Result` with the result of the registration.
+/// An empty `std::io::Result`.
 ///
 /// # Errors
 ///
-/// Returns an error if the server response is unexpected.
-pub fn register_player(stream: &mut TcpStream, registration_token: &str) -> io::Result<()> {
-    let subscribe_player = SubscribePlayer {
-        name: String::from("player_1"),
+/// Returns an error if the registration has failed or the server response is unexpected.
+pub fn register_player(
+    stream: &mut TcpStream,
+    registration_token: &str,
+    player_name: &str,
+) -> io::Result<String> {
+    let subscribe_player: SubscribePlayer = SubscribePlayer {
+        name: String::from(player_name),
         registration_token: registration_token.to_string(),
     };
-    let message = GameMessage::SubscribePlayer(subscribe_player);
+
+    let message: GameMessage = GameMessage::SubscribePlayer(subscribe_player);
     message.send(stream)?;
     log_info!("SubscribePlayer message sent");
 
     match GameMessage::receive(stream)? {
         GameMessage::SubscribePlayerResult(SubscribePlayerResult::Ok) => {
-            log_info!("Player successfully registered.");
-            Ok(())
+            log_info!("Player successfully registered. Waiting for first RadarView...");
+
+            match GameMessage::receive(stream) {
+                Ok(GameMessage::RadarView(encoded_radar)) => {
+                    log_info!("First RadarView received: {}", encoded_radar);
+
+                    return Ok(encoded_radar);
+                }
+                Ok(other_message) => {
+                    log_warning!(
+                        "Unexpected message instead of RadarView: {:?}",
+                        other_message
+                    );
+
+                    let error: std::io::Error =
+                        io::Error::new(io::ErrorKind::InvalidData, "Unexpected server response");
+
+                    return Err(error);
+                }
+                Err(err) => {
+                    log_error!("Failed to receive first RadarView: {}", err);
+
+                    let error: std::io::Error =
+                        io::Error::new(io::ErrorKind::Other, "Failed to receive RadarView");
+
+                    return Err(error);
+                }
+            }
         }
         GameMessage::SubscribePlayerResult(SubscribePlayerResult::Err(e)) => {
             log_error!("Player registration failed: {:?}", e);
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Player registration failed",
-            ))
+
+            let error: std::io::Error =
+                io::Error::new(io::ErrorKind::Other, "Player registration failed");
+
+            return Err(error);
         }
         _ => {
             log_warning!("Unexpected server response");
-            Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Unexpected server response",
-            ))
+
+            let error: std::io::Error =
+                io::Error::new(io::ErrorKind::InvalidData, "Unexpected server response");
+
+            return Err(error);
         }
     }
 }
