@@ -1,4 +1,4 @@
-use shared::{log_debug, log_error, types::log, utils::decode_base64};
+use shared::{log_debug, log_error, utils::decode_base64};
 
 /*
 Radar View:
@@ -93,18 +93,18 @@ fn decode_radar_view(encoded_radar_view: &str) -> Vec<Vec<String>> {
 }
 
 fn build_radar_matrix(
-    h_walls: &Vec<Option<bool>>,
-    v_walls: &Vec<Option<bool>>,
+    horizontal_walls: &Vec<Option<bool>>,
+    vertical_walls: &Vec<Option<bool>>,
     radar_items: &Vec<Option<RadarItem>>,
 ) -> Vec<Vec<String>> {
     let mut matrix: Vec<Vec<String>> = vec![vec![" ".to_string(); 7]; 7];
 
     for i in 0..3 {
         for j in 0..3 {
-            let rr: usize = 2 * i + 1;
-            let cc: usize = 2 * j + 1;
+            let row: usize = 2 * i + 1;
+            let column: usize = 2 * j + 1;
             if let Some(item) = &radar_items[i * 3 + j] {
-                matrix[rr][cc] = match item {
+                matrix[row][column] = match item {
                     RadarItem { is_goal: true, .. } => "G".to_string(),
                     RadarItem { is_hint: true, .. } => "H".to_string(),
                     RadarItem {
@@ -119,30 +119,30 @@ fn build_radar_matrix(
                         entity: Some(Entity::Monster),
                         ..
                     } => "M".to_string(),
-                    _ => "•".to_string(),
+                    _ => "?".to_string(),
                 };
             } else {
-                matrix[rr][cc] = "•".to_string();
+                matrix[row][column] = "?".to_string();
             }
         }
     }
 
     for i in 0..4 {
         for j in 0..3 {
-            let rr: usize = 2 * i;
-            let cc: usize = 2 * j + 1;
-            if let Some(true) = h_walls[i * 3 + j] {
-                matrix[rr][cc] = "-".to_string();
+            let row: usize = 2 * i;
+            let column: usize = 2 * j + 1;
+            if let Some(true) = horizontal_walls[i * 3 + j] {
+                matrix[row][column] = "-".to_string();
             }
         }
     }
 
     for i in 0..3 {
         for j in 0..4 {
-            let rr: usize = 2 * i + 1;
-            let cc: usize = 2 * j;
-            if let Some(true) = v_walls[i * 4 + j] {
-                matrix[rr][cc] = "|".to_string();
+            let row: usize = 2 * i + 1;
+            let column: usize = 2 * j;
+            if let Some(true) = vertical_walls[i * 4 + j] {
+                matrix[row][column] = "|".to_string();
             }
         }
     }
@@ -307,6 +307,14 @@ mod tests {
     fn test_build_matrix() {
         let radar_view: &str = "ieysGjGO8papd/a";
         get_readable_radar_view(radar_view, Orientation::North);
+        log_debug!("Expected radar view:");
+        log_debug!("##• •##");
+        log_debug!("##| |##");
+        log_debug!("•-• •##");
+        log_debug!("|   |##");
+        log_debug!("• •-•##");
+        log_debug!("| #####");
+        log_debug!("•-•####");
     }
 
     #[test]
