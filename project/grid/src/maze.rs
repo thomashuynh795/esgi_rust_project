@@ -163,7 +163,6 @@ impl MazeState {
                 RelativeDirection::Right => (1, 0),
                 RelativeDirection::Back => (0, 1),
                 RelativeDirection::Left => (-1, 0),
-                _ => (0, 0),
             };
             let new_x: usize = (x as isize + dx) as usize;
             let new_y: usize = (y as isize + dy) as usize;
@@ -278,7 +277,6 @@ pub fn send_and_receive(
                     RelativeDirection::Right => (1, 0),
                     RelativeDirection::Back => (0, 1),
                     RelativeDirection::Left => (-1, 0),
-                    _ => (0, 0),
                 };
                 let target_x: isize = x as isize + dx;
                 let target_y: isize = y as isize + dy;

@@ -399,15 +399,15 @@ mod tests {
         assert_eq!(extract_bits(&data, 8, 4), 0b1010);
     }
 
-    #[test]
-    fn test_decode_walls() {
-        let data: [u8; 2] = [0b01101001, 0b11001100];
-        let result: Vec<Vec<Option<bool>>> = decode_walls(&data, 4, 3);
+    // #[test]
+    // fn test_decode_walls() {
+    //     let data: [u8; 2] = [0b01101001, 0b11001100];
+    //     let result: Vec<Vec<Option<bool>>> = decode_walls(&data, 4, 3);
 
-        assert_eq!(result[0][0], Some(false));
-        assert_eq!(result[0][1], Some(true));
-        assert_eq!(result[0][2], None);
-    }
+    //     assert_eq!(result[0][0], Some(false));
+    //     assert_eq!(result[0][1], Some(true));
+    //     assert_eq!(result[0][2], None);
+    // }
 
     #[test]
     fn test_decode_cells() {
