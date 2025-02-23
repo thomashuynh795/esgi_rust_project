@@ -1,4 +1,15 @@
-use shared::{log_debug, log_error, utils::decode_base64};
+use shared::{log_debug, log_error, types::log, utils::decode_base64};
+
+/*
+Radar View:
+•-•-•-•
+| | | |
+•-•-•-•
+| |P| |
+•-•-•-•
+| | | |
+•-•-•-•
+*/
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RadarItem {
@@ -26,7 +37,7 @@ pub fn get_readable_radar_view(
     encoded_radar_view: &str,
     orientation: Orientation,
 ) -> Vec<Vec<String>> {
-    let decoded_map = decode_radar_view(encoded_radar_view);
+    let decoded_map: Vec<Vec<String>> = decode_radar_view(encoded_radar_view);
     rotate_radar_view(&decoded_map, orientation)
 }
 
@@ -48,10 +59,10 @@ fn decode_radar_view(encoded_radar_view: &str) -> Vec<Vec<String>> {
     }
 
     let h_walls_data: &[u8] = &decoded[0..3];
-    let horizontal_walls: Vec<Vec<Option<bool>>> = decode_walls(h_walls_data, 4, 3);
+    // let horizontal_walls = decode_walls(h_walls_data, 4, 3);
 
     let v_walls_data: &[u8] = &decoded[3..6];
-    let vertical_walls: Vec<Vec<Option<bool>>> = decode_walls(v_walls_data, 3, 4);
+    // let vertical_walls = decode_walls(v_walls_data, 3, 4);
 
     let cell_data: &[u8] = &decoded[6..11];
     log_debug!("Extracted Cell Bytes: {:?}", cell_data);
@@ -59,9 +70,10 @@ fn decode_radar_view(encoded_radar_view: &str) -> Vec<Vec<String>> {
     let radar_cells: Vec<Vec<Option<RadarItem>>> = decode_cells(cell_data);
 
     print_extracted_radar_bits(&decoded);
-    print_radar_raw_grid(&horizontal_walls, &vertical_walls, &radar_cells);
+    // print_radar_raw_grid(&horizontal_walls, &vertical_walls, &radar_cells);
 
-    build_server_like_debug_view(&horizontal_walls, &vertical_walls, &radar_cells)
+    // build_server_like_debug_view(&horizontal_walls, &vertical_walls, &radar_cells)
+    return vec![];
 }
 
 fn build_server_like_debug_view(
@@ -69,7 +81,7 @@ fn build_server_like_debug_view(
     v_walls: &Vec<Vec<Option<bool>>>,
     radar_cells: &Vec<Vec<Option<RadarItem>>>,
 ) -> Vec<Vec<String>> {
-    let mut grid: Vec<Vec<String>> = vec![vec![" ".to_string(); 7]; 7];
+    let mut grid = vec![vec![" ".to_string(); 7]; 7];
 
     for row in 0..3 {
         for col in 0..3 {
@@ -116,6 +128,20 @@ fn build_server_like_debug_view(
     return grid;
 }
 
+fn extract_bits(data: &[u8], bit_index: usize, length: usize) -> u8 {
+    let byte_index: usize = bit_index / 8;
+    let bit_offset: usize = bit_index % 8;
+
+    let mut value: u8 = (data[byte_index] >> bit_offset) & ((1 << length) - 1);
+
+    if bit_offset + length > 8 {
+        value |=
+            (data[byte_index + 1] & ((1 << (bit_offset + length - 8)) - 1)) << (8 - bit_offset);
+    }
+
+    return value;
+}
+
 fn print_extracted_radar_bits(decoded: &Vec<u8>) {
     log_debug!("Extracted Bits:");
 
@@ -130,37 +156,45 @@ fn print_extracted_radar_bits(decoded: &Vec<u8>) {
     }
 }
 
-fn decode_walls(data: &[u8], rows: usize, cols: usize) -> Vec<Vec<Option<bool>>> {
-    let mut bit_index: usize = 0;
-    let mut matrix: Vec<Vec<Option<bool>>> = vec![vec![None; cols]; rows];
-
-    for r in 0..rows {
-        for c in 0..cols {
-            if bit_index + 2 > data.len() * 8 {
-                println!(
-                    "Stopping at bit index {}, max: {}",
-                    bit_index,
-                    data.len() * 8
-                );
-                break;
-            }
-
-            let bits = extract_bits(data, bit_index, 2);
-            bit_index += 2;
-
-            println!("Extracted bits at ({}, {}): {:02b}", r, c, bits);
-
-            matrix[r][c] = match bits {
-                0b00 => None,
-                0b01 => Some(false),
-                0b10 => Some(true),
-                _ => None,
-            };
-        }
+fn walls_to_bitstring(data: &[u8]) -> String {
+    if data.len() != 3 {
+        log_error!("Wall data expects 3 bytes, but has {} byte(s)", data.len());
+        return String::new();
     }
-    println!("Decoded Walls: {:?}", matrix);
 
-    return matrix;
+    log_debug!(
+        "Byte of data (Little Endian)  : {:08b} {:08b} {:08b}",
+        data[0],
+        data[1],
+        data[2]
+    );
+
+    let raw_bits: u32 = ((data[2] as u32) << 16) | ((data[1] as u32) << 8) | (data[0] as u32);
+
+    log_debug!("Concatenated 24-bit value: {:024b}", raw_bits);
+
+    let bit_string = format!("{:024b}", raw_bits);
+
+    log_debug!("Bit String Representation: {}", bit_string);
+
+    bit_string
+}
+
+fn extract_walls_from_string(bit_string: &str) -> Vec<Option<bool>> {
+    bit_string
+        .chars()
+        .collect::<Vec<char>>()
+        .chunks(2)
+        .map(|chunk: &[char]| {
+            let pair: String = chunk.iter().collect::<String>();
+            match pair.as_str() {
+                "00" => None,
+                "01" => Some(false),
+                "10" => Some(true),
+                _ => None,
+            }
+        })
+        .collect()
 }
 
 fn decode_cells(data: &[u8]) -> Vec<Vec<Option<RadarItem>>> {
@@ -190,6 +224,7 @@ fn extract_bits_exactly_36(data: &[u8], bit_index: usize, length: usize) -> u8 {
     if 36 < bit_index + length {
         return 0b1111;
     }
+
     return extract_bits(data, bit_index, length);
 }
 
@@ -220,38 +255,11 @@ fn parse_radar_item(bits: u8) -> Option<RadarItem> {
         entity
     );
 
-    Some(RadarItem {
+    return Some(RadarItem {
         is_hint,
         is_goal,
         entity,
-    })
-}
-
-fn extract_bits(data: &[u8], bit_index: usize, length: usize) -> u8 {
-    let byte_index: usize = bit_index / 8;
-    let bit_offset: usize = bit_index % 8;
-
-    if byte_index >= data.len() {
-        return 0;
-    }
-
-    let mut value: u8 = (data[byte_index] >> bit_offset) & ((1 << length) - 1);
-
-    let bits_used: usize = 8 - bit_offset;
-    if bits_used < length && byte_index + 1 < data.len() {
-        let remaining_bits: usize = length - bits_used;
-        let next_byte: u8 = (data[byte_index + 1] & ((1 << remaining_bits) - 1)) << bits_used;
-        value |= next_byte;
-    }
-
-    log_debug!(
-        "Extracting bits [{}-{}]: {:02b}",
-        bit_index,
-        bit_index + length,
-        value
-    );
-
-    return value;
+    });
 }
 
 pub fn rotate_radar_view(matrix: &Vec<Vec<String>>, orientation: Orientation) -> Vec<Vec<String>> {
@@ -273,7 +281,8 @@ fn rotate_90_clockwise(matrix: &Vec<Vec<String>>) -> Vec<Vec<String>> {
             rotated[c][n - 1 - r] = matrix[r][c].clone();
         }
     }
-    rotated
+
+    return rotated;
 }
 
 fn print_radar_raw_grid(
@@ -399,15 +408,63 @@ mod tests {
         assert_eq!(extract_bits(&data, 8, 4), 0b1010);
     }
 
-    // #[test]
-    // fn test_decode_walls() {
-    //     let data: [u8; 2] = [0b01101001, 0b11001100];
-    //     let result: Vec<Vec<Option<bool>>> = decode_walls(&data, 4, 3);
+    #[test]
+    fn test_walls_to_string() {
+        let horizontal_walls_bytes: [u8; 3] = [0b00100000, 0b01000110, 0b00010010];
+        let vertical_walls_bytes: [u8; 3] = [0b10000000, 0b10011000, 0b00101000];
 
-    //     assert_eq!(result[0][0], Some(false));
-    //     assert_eq!(result[0][1], Some(true));
-    //     assert_eq!(result[0][2], None);
-    // }
+        let concatened_horizontal_walls_bits: String = walls_to_bitstring(&horizontal_walls_bytes);
+        let concatened_vertical_walls_bits: String = walls_to_bitstring(&vertical_walls_bytes);
+
+        assert_eq!(concatened_horizontal_walls_bits, "000100100100011000100000");
+        assert_eq!(concatened_vertical_walls_bits, "001010001001100010000000");
+
+        let horizontal_extracted_walls: Vec<Option<bool>> =
+            extract_walls_from_string(&concatened_horizontal_walls_bits);
+
+        let vertical_extracted_walls: Vec<Option<bool>> =
+            extract_walls_from_string(&concatened_vertical_walls_bits);
+
+        let expected_horizontal_walls: Vec<Option<bool>> = vec![
+            // Line 1.
+            None,
+            Some(false),
+            None,
+            // Line 2.
+            Some(true),
+            Some(false),
+            None,
+            // Line 3.
+            Some(false),
+            Some(true),
+            None,
+            // Line 4.
+            Some(true),
+            None,
+            None,
+        ];
+
+        let expected_vertical_walls: Vec<Option<bool>> = vec![
+            // Line 1.
+            None,
+            Some(true),
+            Some(true),
+            None,
+            // Line 2.
+            Some(true),
+            Some(false),
+            Some(true),
+            None,
+            // Line 3.
+            Some(true),
+            None,
+            None,
+            None,
+        ];
+
+        assert_eq!(horizontal_extracted_walls, expected_horizontal_walls);
+        assert_eq!(vertical_extracted_walls, expected_vertical_walls);
+    }
 
     #[test]
     fn test_decode_cells() {
