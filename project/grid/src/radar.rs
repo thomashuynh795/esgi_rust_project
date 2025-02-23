@@ -1,4 +1,4 @@
-use shared::{log_debug, log_error, utils::decode_base64};
+use shared::{log_debug, log_error, types::log, utils::decode_base64};
 
 /*
 Radar View:
@@ -45,8 +45,6 @@ fn decode_radar_view(encoded_radar_view: &str) -> Vec<Vec<String>> {
     let decoded: Vec<u8> =
         decode_base64(encoded_radar_view).expect("Invalid Base64 data for RadarView");
 
-    log_debug!("Full Decoded Data: {:?}", decoded);
-
     if decoded.len() != 11 {
         log_error!(
             "RadarView expects 11 bytes, but has {} byte(s)",
@@ -54,17 +52,60 @@ fn decode_radar_view(encoded_radar_view: &str) -> Vec<Vec<String>> {
         );
     }
 
-    for (i, byte) in decoded.iter().enumerate() {
-        log_debug!("Byte {}: {:08b} ({})", i, byte, byte);
-    }
-
     let h_walls_data: &[u8] = &decoded[0..3];
     let h_walls_bits: String = convert_walls_bytes_to_string(h_walls_data);
     let horizontal_walls: Vec<Option<bool>> = extract_walls_data_from_bits_string(&h_walls_bits);
+    log_debug!("Horizontal walls:");
+    log_debug!(
+        "{:?} {:?} {:?}",
+        horizontal_walls[0],
+        horizontal_walls[1],
+        horizontal_walls[2],
+    );
+    log_debug!(
+        "{:?} {:?} {:?}",
+        horizontal_walls[3],
+        horizontal_walls[4],
+        horizontal_walls[5],
+    );
+    log_debug!(
+        "{:?} {:?} {:?}",
+        horizontal_walls[6],
+        horizontal_walls[7],
+        horizontal_walls[8],
+    );
+    log_debug!(
+        "{:?} {:?} {:?}",
+        horizontal_walls[9],
+        horizontal_walls[10],
+        horizontal_walls[11],
+    );
 
     let v_walls_data: &[u8] = &decoded[3..6];
     let v_walls_bits: String = convert_walls_bytes_to_string(v_walls_data);
     let vertical_walls: Vec<Option<bool>> = extract_walls_data_from_bits_string(&v_walls_bits);
+    log_debug!("Vertical walls:");
+    log_debug!(
+        "{:?} {:?} {:?} {:?}",
+        vertical_walls[0],
+        vertical_walls[1],
+        vertical_walls[2],
+        vertical_walls[3]
+    );
+    log_debug!(
+        "{:?} {:?} {:?} {:?}",
+        vertical_walls[4],
+        vertical_walls[5],
+        vertical_walls[6],
+        vertical_walls[7]
+    );
+    log_debug!(
+        "{:?} {:?} {:?} {:?}",
+        vertical_walls[8],
+        vertical_walls[9],
+        vertical_walls[10],
+        vertical_walls[11]
+    );
 
     let cell_data: &[u8] = &decoded[6..11];
     let cell_bits: Vec<String> = extract_cells_data(cell_data);
@@ -73,16 +114,12 @@ fn decode_radar_view(encoded_radar_view: &str) -> Vec<Vec<String>> {
         .map(|bits: &String| get_radar_item_from_bits(bits))
         .collect();
 
-    log_debug!("Extracted cell Bits: {:?}", cell_bits);
+    for (i, item) in radar_items.iter().enumerate() {
+        log_debug!("Radar Item {}: {:?}", i, item);
+    }
 
     let merged_view: Vec<Vec<String>> =
         build_radar_matrix(&horizontal_walls, &vertical_walls, &radar_items);
-
-    for row in &merged_view {
-        for col in row {
-            log_debug!("{}", col);
-        }
-    }
 
     log_debug!("Merged radar view:");
     for row in &merged_view {
@@ -101,10 +138,10 @@ fn build_radar_matrix(
 
     for i in 0..3 {
         for j in 0..3 {
-            let row: usize = 2 * i + 1;
-            let column: usize = 2 * j + 1;
+            let row = 2 * i + 1;
+            let col = 2 * j + 1;
             if let Some(item) = &radar_items[i * 3 + j] {
-                matrix[row][column] = match item {
+                matrix[row][col] = match item {
                     RadarItem { is_goal: true, .. } => "G".to_string(),
                     RadarItem { is_hint: true, .. } => "H".to_string(),
                     RadarItem {
@@ -122,37 +159,56 @@ fn build_radar_matrix(
                     _ => "?".to_string(),
                 };
             } else {
-                matrix[row][column] = "?".to_string();
+                matrix[row][col] = "?".to_string();
             }
         }
     }
 
     for i in 0..4 {
         for j in 0..3 {
-            let row: usize = 2 * i;
-            let column: usize = 2 * j + 1;
+            let row = 2 * i;
+            let col = 2 * j + 1;
             if let Some(true) = horizontal_walls[i * 3 + j] {
-                matrix[row][column] = "-".to_string();
+                matrix[row][col] = "-".to_string();
             }
         }
     }
 
     for i in 0..3 {
         for j in 0..4 {
-            let row: usize = 2 * i + 1;
-            let column: usize = 2 * j;
+            let row = 2 * i + 1;
+            let col = 2 * j;
             if let Some(true) = vertical_walls[i * 4 + j] {
-                matrix[row][column] = "|".to_string();
+                matrix[row][col] = "|".to_string();
+            }
+        }
+    }
+
+    for i in 0..4 {
+        for j in 0..4 {
+            let row = 2 * i;
+            let col = 2 * j;
+            let has_horizontal = if j < 3 {
+                horizontal_walls[i * 3 + j] == Some(true)
+            } else {
+                false
+            };
+            let has_vertical = if i < 3 {
+                vertical_walls[i * 4 + j] == Some(true)
+            } else {
+                false
+            };
+
+            if has_horizontal && has_vertical {
+                matrix[row][col] = "•".to_string();
             }
         }
     }
 
     for r in 0..7 {
         for c in 0..7 {
-            if matrix[r][c] == " " {
-                if r == 0 || r == 6 || c == 0 || c == 6 {
-                    matrix[r][c] = "#".to_string();
-                }
+            if r == 0 || r == 6 || c == 0 || c == 6 {
+                matrix[r][c] = "#".to_string();
             }
         }
     }
