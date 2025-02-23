@@ -177,11 +177,11 @@ fn walls_to_bitstring(data: &[u8]) -> String {
 
     log_debug!("Bit String Representation: {}", bit_string);
 
-    bit_string
+    return bit_string;
 }
 
 fn extract_walls_from_string(bit_string: &str) -> Vec<Option<bool>> {
-    bit_string
+    return bit_string
         .chars()
         .collect::<Vec<char>>()
         .chunks(2)
@@ -194,7 +194,41 @@ fn extract_walls_from_string(bit_string: &str) -> Vec<Option<bool>> {
                 _ => None,
             }
         })
-        .collect()
+        .collect();
+}
+
+fn extract_cell_bits(bytes: &[u8]) -> Vec<String> {
+    if bytes.len() != 5 {
+        log_error!("Cell data expects 5 bytes, but has {}", bytes.len());
+        return vec![];
+    }
+
+    log_debug!(
+        "Byte of cell data (input) : {:02X} {:02X} {:02X} {:02X} {:02X}",
+        bytes[0],
+        bytes[1],
+        bytes[2],
+        bytes[3],
+        bytes[4]
+    );
+
+    let raw_40_bits: u64 = ((bytes[0] as u64) << 32)
+        | ((bytes[1] as u64) << 24)
+        | ((bytes[2] as u64) << 16)
+        | ((bytes[3] as u64) << 8)
+        | (bytes[4] as u64);
+
+    let full_str: String = format!("{:040b}", raw_40_bits);
+    let bits_36: &str = &full_str[..36];
+
+    let chunked: Vec<String> = bits_36
+        .chars()
+        .collect::<Vec<_>>()
+        .chunks(4)
+        .map(|c| c.iter().collect::<String>())
+        .collect();
+
+    return chunked;
 }
 
 fn decode_cells(data: &[u8]) -> Vec<Vec<Option<RadarItem>>> {
@@ -366,6 +400,33 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn test_extract_cell_bits() {
+        let cell_data: [u8; 5] = [0xF0, 0xF0, 0x0F, 0x0F, 0xF0];
+        let extracted_bits: Vec<String> = extract_cell_bits(&cell_data);
+
+        assert_eq!(
+            extracted_bits,
+            vec![
+                "1111".to_string(),
+                "0000".to_string(),
+                "1111".to_string(),
+                "0000".to_string(),
+                "0000".to_string(),
+                "1111".to_string(),
+                "0000".to_string(),
+                "1111".to_string(),
+                "1111".to_string()
+            ]
+        );
+    }
+    /*
+    11110000 11110000 00001111 00001111 11110000 little endian
+    11110000 00001111 00001111 11110000 11110000 gib endian
+    11110000 00001111 00001111 11110000 11110000 36 bits
+    1111 0000 0000 1111 0000 1111 1111 0000 1111 9 cells
+     */
 
     #[test]
     fn test_parse_radar_item_goal_enemy() {
