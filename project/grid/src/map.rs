@@ -1,4 +1,4 @@
-use crate::radar::{get_readable_radar_view, Orientation};
+use crate::radar::Orientation;
 use shared::log_info;
 
 pub struct Map {
@@ -10,12 +10,12 @@ impl Map {
     pub fn new(encoded_first_radar_view: &str) -> Result<Map, &'static str> {
         log_info!("Player is spwaning");
 
-        let matrix: Vec<Vec<String>> =
-            get_readable_radar_view(encoded_first_radar_view, Orientation::North);
+        // let matrix: Vec<Vec<String>> =
+        // get_readable_radar_view(encoded_first_radar_view, Orientation::North);
 
         let map = Map {
             position: (1, 1),
-            matrix,
+            matrix: vec![],
         };
 
         log_info!("Player has spawned");
