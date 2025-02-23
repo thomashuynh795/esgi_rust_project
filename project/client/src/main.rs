@@ -2,7 +2,6 @@
 extern crate shared;
 
 use grid::map::Map;
-use shared::utils::decode_base64;
 use shared::utils::{connect_to_server, register_player, register_team};
 use std::collections::HashMap;
 use std::env;
