@@ -1,3 +1,5 @@
+use std::collections::vec_deque::Iter;
+
 use shared::{
     log_debug, log_error,
     types::{log, orientation},
@@ -61,18 +63,19 @@ impl RadarView {
             orientation,
         };
 
+        radar_view.print_encoded_view();
         radar_view.decode_view();
         radar_view.extract_data();
         radar_view.merge_walls();
         radar_view.build_radar_matrix();
+        radar_view.rotate_radar_view();
 
         return radar_view;
     }
 
-    pub fn get_readable_radar_view(&mut self) -> Vec<Vec<String>> {
-        self.decode_view();
-        self.rotate_radar_view();
-        return self.grid.clone();
+    pub fn print_encoded_view(&self) {
+        log_debug!("Encoded view: {}", self.encoded_view);
+        log_debug!("==============================");
     }
 
     pub fn merge_walls(&mut self) {
@@ -119,6 +122,8 @@ impl RadarView {
         for row in &self.walls {
             log_debug!("{}", row.join(""));
         }
+
+        log_debug!("==============================");
     }
 
     pub fn decode_view(&mut self) -> () {
@@ -131,23 +136,52 @@ impl RadarView {
             );
         }
         self.decoded_view = decoded;
+        self.print_decoded_view();
+    }
+
+    pub fn print_decoded_view(&self) {
+        log_debug!("Decoded view:");
+        for byte in &self.decoded_view {
+            log_debug!("{:08b}", byte);
+        }
+
+        log_debug!("==============================");
     }
 
     fn extract_data(&mut self) {
         let h_walls_data: &[u8] = &self.decoded_view[0..3];
+        log_debug!("Horizontal walls data bytes:");
+        for byte in h_walls_data {
+            log_debug!("{:08b}", byte);
+        }
+        log_debug!("==============================");
         let h_walls_bits: String = RadarView::convert_walls_bytes_to_string(h_walls_data);
         self.horizontal_walls = RadarView::extract_walls_data_from_bits_string(&h_walls_bits);
 
         let v_walls_data: &[u8] = &self.decoded_view[3..6];
+        log_debug!("Vertical walls data bytes:");
+        for byte in v_walls_data {
+            log_debug!("{:08b}", byte);
+        }
+        log_debug!("==============================");
         let v_walls_bits: String = RadarView::convert_walls_bytes_to_string(v_walls_data);
         self.vertical_walls = RadarView::extract_walls_data_from_bits_string(&v_walls_bits);
 
         let cell_data: &[u8] = &self.decoded_view[6..11];
+        log_debug!("Cell data bytes:");
+        for byte in cell_data {
+            log_debug!("{:08b}", byte);
+        }
+        log_debug!("==============================");
         let cell_bits: Vec<String> = RadarView::extract_cells_data(cell_data);
         self.radar_items = cell_bits
             .iter()
             .map(|bits: &String| RadarView::get_radar_item_from_bits(bits))
             .collect();
+
+        self.print_horizontal_walls();
+        self.print_vertical_walls();
+        self.print_radar_items();
     }
 
     pub fn print_horizontal_walls(&self) {
@@ -176,6 +210,8 @@ impl RadarView {
             self.horizontal_walls[10],
             self.horizontal_walls[11],
         );
+
+        log_debug!("==============================");
     }
 
     pub fn print_vertical_walls(&self) {
@@ -201,6 +237,8 @@ impl RadarView {
             self.vertical_walls[10],
             self.vertical_walls[11]
         );
+
+        log_debug!("==============================");
     }
 
     pub fn print_radar_items(&self) {
@@ -223,6 +261,8 @@ impl RadarView {
             self.radar_items[7],
             self.radar_items[8]
         );
+
+        log_debug!("==============================");
     }
 
     fn build_radar_matrix(&mut self) -> () {
@@ -313,6 +353,8 @@ impl RadarView {
         for row in &self.grid {
             log_debug!("{}", row.join(""));
         }
+
+        log_debug!("==============================");
     }
 
     fn convert_walls_bytes_to_string(data: &[u8]) -> String {
@@ -372,13 +414,15 @@ impl RadarView {
         }
 
         log_debug!(
-            "Byte of cell data (input) : {:02X} {:02X} {:02X} {:02X} {:02X}",
+            "Byte of cell data (input) : {:0b} {:0b} {:0b} {:0b} {:0b}",
             bytes[0],
             bytes[1],
             bytes[2],
             bytes[3],
             bytes[4]
         );
+
+        log_debug!("==============================");
 
         let raw_40_bits: u64 = ((bytes[0] as u64) << 32)
             | ((bytes[1] as u64) << 24)
@@ -463,14 +507,10 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let mut radar_view: RadarView =
+        let radar_view: RadarView =
             RadarView::new("ieysGjGO8papd/a".to_string(), Orientation::North);
 
-        radar_view.print_horizontal_walls();
-        // radar_view.print_vertical_walls();
-        // radar_view.print_radar_items();
         radar_view.print_walls();
-        // radar_view.print_grid();
         log_debug!("Expected radar view:");
         log_debug!("##• •##");
         log_debug!("##| |##");
@@ -483,18 +523,9 @@ mod tests {
 
     #[test]
     fn test_build_matrix() {
-        let mut radar_view: RadarView = RadarView {
-            encoded_view: "ieysGjGO8papd/a".to_string(),
-            decoded_view: vec![],
-            horizontal_walls: vec![None; 12],
-            vertical_walls: vec![None; 12],
-            radar_items: vec![None; 9],
-            walls: vec![],
-            grid: vec![],
-            orientation: Orientation::North,
-        };
+        let radar_view: RadarView =
+            RadarView::new("ieysGjGO8papd/a".to_string(), Orientation::North);
 
-        radar_view.get_readable_radar_view();
         radar_view.print_grid();
         log_debug!("Expected radar view:");
         log_debug!("##• •##");
