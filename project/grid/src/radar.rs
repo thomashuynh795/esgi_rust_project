@@ -506,7 +506,7 @@ mod tests {
     #[test]
     fn test_new() {
         let radar_view: RadarView =
-            RadarView::new("geguwcHwaa8papa".to_string(), Orientation::North);
+            RadarView::new("ieysGjGO8papd/a".to_string(), Orientation::North);
 
         radar_view.print_walls();
         log_debug!("Expected radar view:");

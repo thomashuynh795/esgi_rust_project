@@ -1,5 +1,5 @@
 use crate::{
-    log_error, log_info, log_warning,
+    log_debug, log_error, log_info, log_warning,
     types::message::{
         GameMessage, RegisterTeam, RegisterTeamResult, SubscribePlayer, SubscribePlayerResult,
     },
@@ -7,83 +7,105 @@ use crate::{
 use std::io::{self};
 use std::net::TcpStream;
 
-/// Decodes a Base64-encoded string into an array of bytes.
+/// Decodes a Base64-encoded string into a vector of bytes.
 ///
 /// # Arguments
 ///
-/// * `encoded_input` - A Base64-encoded string.
+/// * `input` - The Base64-encoded string.
 ///
 /// # Returns
 ///
-/// A `Result` with the decoded bytes if the input is valid, or an error message.
+/// A `Result` containing the decoded bytes if successful, or an error message if invalid.
 ///
 /// # Errors
 ///
-/// Returns an error if the encoded input contains invalid characters.
-pub fn decode_base64(s: &str) -> Result<Vec<u8>, String> {
-    const ALPHABET: &[u8; 64] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/";
-    // Construction d'une table de correspondance pour retrouver la valeur associée à chaque caractère.
-    let mut rev_table = [255u8; 128];
-    for (i, &byte) in ALPHABET.iter().enumerate() {
-        rev_table[byte as usize] = i as u8;
+/// Returns an error if the input contains invalid characters or has an incorrect length.
+pub fn decode_base64(input: &str) -> Result<Vec<u8>, String> {
+    // Define the Base64 character set.
+    const BASE64_TABLE: &[u8; 64] =
+        b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/";
+
+    // Creates an array of 128 elements with a default value of 255.
+    // Default value of 255 means "invalid character".
+    let mut lookup_table: [u8; 128] = [255u8; 128];
+    for i in 0..lookup_table.len() {
+        log_debug!("byte: {}", lookup_table[i]);
+    }
+    for (i, &symbol) in BASE64_TABLE.iter().enumerate() {
+        lookup_table[symbol as usize] = i as u8; // Store the Base64 index in the table.
     }
 
-    // Vérification : seule une taille de la forme 4n+1 est invalide.
-    if s.len() % 4 == 1 {
-        return Err("Taille invalide pour un encodage base64".to_string());
+    // Validate that the input length is not of the form `4n+1` (which is invalid for Base64).
+    if input.len() % 4 == 1 {
+        return Err("Invalid Base64 length".to_string());
     }
 
-    let mut output = Vec::new();
-    let mut chars = s.chars().peekable();
+    let mut decoded_bytes: Vec<u8> = Vec::new();
+    let mut char_iter: std::iter::Peekable<std::str::Chars<'_>> = input.chars().peekable(); // Allows peeking ahead in the iterator.
 
-    while chars.peek().is_some() {
-        let mut group = Vec::new();
+    while char_iter.peek().is_some() {
+        let mut chunk: Vec<u8> = Vec::new();
+
+        // Read up to 4 characters from the input string.
         for _ in 0..4 {
-            if let Some(c) = chars.peek() {
-                let c_val = *c as usize;
-                if c_val >= 128 || rev_table[c_val] == 255 {
-                    return Err(format!("Caractère non autorisé: {}", c));
+            if let Some(&current_char) = char_iter.peek() {
+                let char_index = current_char as usize;
+
+                // Validate that the character exists in our lookup table.
+                if 128 <= char_index || lookup_table[char_index] == 255 {
+                    return Err(format!("Invalid character found: {}", current_char));
                 }
-                group.push(rev_table[c_val]);
-                chars.next();
+
+                // Convert the Base64 character to its 6-bit value.
+                chunk.push(lookup_table[char_index]);
+                char_iter.next();
             } else {
                 break;
             }
         }
 
-        match group.len() {
+        // Convert the 6-bit chunks into 8-bit bytes.
+        match chunk.len() {
             4 => {
-                let byte1 = (group[0] << 2) | (group[1] >> 4);
-                let byte2 = ((group[1] & 0x0F) << 4) | (group[2] >> 2);
-                let byte3 = ((group[2] & 0x03) << 6) | group[3];
-                output.push(byte1);
-                output.push(byte2);
-                output.push(byte3);
+                let first_byte: u8 = (chunk[0] << 2) | (chunk[1] >> 4);
+                let second_byte: u8 = ((chunk[1] & 0x0F) << 4) | (chunk[2] >> 2);
+                let third_byte: u8 = ((chunk[2] & 0x03) << 6) | chunk[3];
+
+                decoded_bytes.push(first_byte);
+                decoded_bytes.push(second_byte);
+                decoded_bytes.push(third_byte);
             }
             3 => {
-                let byte1 = (group[0] << 2) | (group[1] >> 4);
-                let byte2 = ((group[1] & 0x0F) << 4) | (group[2] >> 2);
-                output.push(byte1);
-                output.push(byte2);
+                let first_byte: u8 = (chunk[0] << 2) | (chunk[1] >> 4);
+                let second_byte: u8 = ((chunk[1] & 0x0F) << 4) | (chunk[2] >> 2);
+
+                decoded_bytes.push(first_byte);
+                decoded_bytes.push(second_byte);
             }
             2 => {
-                let byte1 = (group[0] << 2) | (group[1] >> 4);
-                output.push(byte1);
+                let first_byte: u8 = (chunk[0] << 2) | (chunk[1] >> 4);
+                decoded_bytes.push(first_byte);
             }
-            _ => return Err("Groupe de caractères invalide".to_string()),
+            _ => return Err("Invalid Base64 group".to_string()),
         }
     }
-    Ok(output)
+
+    return Ok(decoded_bytes);
 }
+
 #[cfg(test)]
 mod tests {
     use super::decode_base64;
 
     #[test]
     fn test_base64_decode_valid() {
-        let encoded: &str = "SGVsbG8gd29ybGQh"; // Hello world!
+        let encoded: &str = "ieysGjGO8papd/a";
         let decoded: Vec<u8> = decode_base64(encoded).expect("Failed to decode Base64.");
-        assert_eq!(decoded, b"Hello world!");
+        let expected = vec![
+            0b00100000, 0b01000110, 0b00010010, 0b10000000, 0b10011000, 0b00101000, 0b11110000,
+            0b11110000, 0b00001111, 0b00001111, 0b11110000,
+        ];
+        assert_eq!(decoded, expected);
     }
 
     #[test]
