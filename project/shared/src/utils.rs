@@ -20,59 +20,61 @@ use std::net::TcpStream;
 /// # Errors
 ///
 /// Returns an error if the encoded input contains invalid characters.
-pub fn decode_base64(encoded_input: &str) -> Result<Vec<u8>, &'static str> {
-    // Base64 alphabet.
-    let base64_table: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-    let mut decoded_bytes: Vec<u8> = Vec::new();
-    let mut six_bits_packets: Vec<u8> = Vec::new();
-
-    for c in encoded_input.chars() {
-        // Stops if the character is a Base64 padding.
-        if c == '=' {
-            break;
-        }
-
-        // Stores the 6-bits value of the character. It's only 6 bits because the Base64.
-        let six_bits_value: Option<usize> = base64_table.find(c);
-        if six_bits_value.is_none() {
-            return Err("Invalid character in Base64 input.");
-        }
-
-        // Converts the 6-bits value to a u8 and stores it.
-        // This unwrap is safe because we already checked if the value is not None.
-        six_bits_packets.push(six_bits_value.unwrap() as u8);
+pub fn decode_base64(s: &str) -> Result<Vec<u8>, String> {
+    const ALPHABET: &[u8; 64] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/";
+    // Construction d'une table de correspondance pour retrouver la valeur associée à chaque caractère.
+    let mut rev_table = [255u8; 128];
+    for (i, &byte) in ALPHABET.iter().enumerate() {
+        rev_table[byte as usize] = i as u8;
     }
 
-    // Process the 6-bit values into 8-bit bytes.
-    let mut buffer: u64 = 0; // 32 bits buffer.
-    let mut bits_collected: u8 = 0; // Tracks how many bits are stored.
-
-    // Can extract a byte only if there is an entire one in the buffer.
-    for &six_bits in &six_bits_packets {
-        // Shifts the buffer to the left by 6 0 and adds the new 6-bits value.
-        // The << operator does not return something.
-        buffer = (buffer << 6) | (six_bits as u64);
-        bits_collected += 6;
-
-        while 8 <= bits_collected {
-            bits_collected -= 8;
-            // Extracts the 8-bit byte from the buffer and stores it.
-            // The >> operator returns the bits shifted to the right and does not modify the original value.
-            let byte: u8 = (buffer >> bits_collected) as u8;
-            // Stores the byte in the result.
-            decoded_bytes.push(byte);
-
-            // Cleans the buffer by removing the extracted byte.
-            let extracted_bits: u8 = (buffer >> bits_collected) as u8;
-            let shifted_back: u8 = extracted_bits << bits_collected; // Create the bits to remove.
-            buffer -= shifted_back as u64; // Subtracts the bits to remove.
-        }
+    // Vérification : seule une taille de la forme 4n+1 est invalide.
+    if s.len() % 4 == 1 {
+        return Err("Taille invalide pour un encodage base64".to_string());
     }
 
-    return Ok(decoded_bytes);
+    let mut output = Vec::new();
+    let mut chars = s.chars().peekable();
+
+    while chars.peek().is_some() {
+        let mut group = Vec::new();
+        for _ in 0..4 {
+            if let Some(c) = chars.peek() {
+                let c_val = *c as usize;
+                if c_val >= 128 || rev_table[c_val] == 255 {
+                    return Err(format!("Caractère non autorisé: {}", c));
+                }
+                group.push(rev_table[c_val]);
+                chars.next();
+            } else {
+                break;
+            }
+        }
+
+        match group.len() {
+            4 => {
+                let byte1 = (group[0] << 2) | (group[1] >> 4);
+                let byte2 = ((group[1] & 0x0F) << 4) | (group[2] >> 2);
+                let byte3 = ((group[2] & 0x03) << 6) | group[3];
+                output.push(byte1);
+                output.push(byte2);
+                output.push(byte3);
+            }
+            3 => {
+                let byte1 = (group[0] << 2) | (group[1] >> 4);
+                let byte2 = ((group[1] & 0x0F) << 4) | (group[2] >> 2);
+                output.push(byte1);
+                output.push(byte2);
+            }
+            2 => {
+                let byte1 = (group[0] << 2) | (group[1] >> 4);
+                output.push(byte1);
+            }
+            _ => return Err("Groupe de caractères invalide".to_string()),
+        }
+    }
+    Ok(output)
 }
-
 #[cfg(test)]
 mod tests {
     use super::decode_base64;
