@@ -72,7 +72,7 @@ impl RadarView {
         for i in 0..7 {
             for j in 0..7 {
                 if i % 2 == 0 && j % 2 == 0 {
-                    self.walls[i][j] = "•".to_string();
+                    self.walls[i][j] = "1".to_string();
                 }
             }
         }
@@ -82,9 +82,9 @@ impl RadarView {
             for j in 0..7 {
                 if i % 2 == 0 && j % 2 == 1 {
                     match self.horizontal_walls[n] {
-                        Some(true) => self.walls[i][j] = "-".to_string(),
+                        Some(true) => self.walls[i][j] = "1".to_string(),
                         Some(false) => self.walls[i][j] = " ".to_string(),
-                        None => self.walls[i][j] = "?".to_string(),
+                        None => self.walls[i][j] = "#".to_string(),
                     }
                     n += 1;
                 }
@@ -96,9 +96,9 @@ impl RadarView {
             for j in 0..7 {
                 if i % 2 == 1 && j % 2 == 0 {
                     match self.vertical_walls[n] {
-                        Some(true) => self.walls[i][j] = "|".to_string(),
+                        Some(true) => self.walls[i][j] = "1".to_string(),
                         Some(false) => self.walls[i][j] = " ".to_string(),
-                        None => self.walls[i][j] = "?".to_string(),
+                        None => self.walls[i][j] = "#".to_string(),
                     }
                     n += 1;
                 }
