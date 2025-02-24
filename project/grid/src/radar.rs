@@ -541,7 +541,7 @@ mod tests {
     #[test]
     fn test_build_matrix() {
         let radar_view: RadarView =
-            RadarView::new("ieysGjGO8papd/a".to_string(), Orientation::North);
+            RadarView::new("geguwcHwaa8papa".to_string(), Orientation::North);
 
         radar_view.print_grid();
         log_debug!("Expected radar view:");
