@@ -36,10 +36,9 @@ pub enum Orientation {
 pub struct RadarView {
     pub encoded_view: String,
     pub decoded_view: Vec<u8>,
-    pub horizontal_walls: Vec<Option<bool>>,
-    pub vertical_walls: Vec<Option<bool>>,
-    pub radar_items: Vec<Option<RadarItem>>,
-    pub walls: Vec<Vec<String>>,
+    pub horizontal_walls: Vec<Vec<Option<bool>>>,
+    pub vertical_walls: Vec<Vec<Option<bool>>>,
+    pub radar_items: Vec<Vec<Option<RadarItem>>>,
     pub grid: Vec<Vec<String>>,
     pub orientation: Orientation,
 }
@@ -49,10 +48,9 @@ impl RadarView {
         let mut radar_view: RadarView = RadarView {
             encoded_view,
             decoded_view: vec![],
-            horizontal_walls: vec![None; 12],
-            vertical_walls: vec![None; 12],
-            radar_items: vec![None; 9],
-            walls: vec![],
+            horizontal_walls: vec![],
+            vertical_walls: vec![],
+            radar_items: vec![],
             grid: vec![],
             orientation,
         };
@@ -61,46 +59,69 @@ impl RadarView {
         radar_view.decode_view();
         radar_view.extract_data();
         radar_view.merge_walls();
-        radar_view.build_radar_matrix();
         radar_view.rotate_radar_view();
 
         return radar_view;
     }
 
     pub fn merge_walls(&mut self) {
-        self.walls = vec![vec![" ".to_string(); 7]; 7];
-        for i in 0..7 {
-            for j in 0..7 {
-                if i % 2 == 0 && j % 2 == 0 {
-                    self.walls[i][j] = "1".to_string();
+        self.grid = vec![vec!["#".to_string(); 7]; 7];
+
+        for i in 0..4 {
+            for j in 0..3 {
+                match self.horizontal_walls[i][j] {
+                    Some(true) => self.grid[2 * i][2 * j + 1] = "-".to_string(),
+                    Some(false) => self.grid[2 * i][2 * j + 1] = " ".to_string(),
+                    None => (),
                 }
             }
         }
 
-        let mut n: usize = 0;
-        for i in 0..7 {
-            for j in 0..7 {
-                if i % 2 == 0 && j % 2 == 1 {
-                    match self.horizontal_walls[n] {
-                        Some(true) => self.walls[i][j] = "1".to_string(),
-                        Some(false) => self.walls[i][j] = " ".to_string(),
-                        None => self.walls[i][j] = "#".to_string(),
-                    }
-                    n += 1;
+        for i in 0..3 {
+            for j in 0..4 {
+                match self.vertical_walls[i][j] {
+                    Some(true) => self.grid[2 * i + 1][2 * j] = "|".to_string(),
+                    Some(false) => self.grid[2 * i + 1][2 * j] = " ".to_string(),
+                    None => (),
+                }
+            }
+        }
+        for i in 0..3 {
+            for j in 0..3 {
+                let wall_x = 2 * i + 1;
+                let wall_y = 2 * j + 1;
+
+                if let Some(radar_item) = &self.radar_items[i][j] {
+                    self.grid[wall_x][wall_y] = match radar_item {
+                        RadarItem { is_hint: true, .. } => "H".to_string(),
+                        RadarItem { is_goal: true, .. } => "G".to_string(),
+                        RadarItem {
+                            entity: Some(Entity::Ally),
+                            ..
+                        } => "A".to_string(),
+                        RadarItem {
+                            entity: Some(Entity::Enemy),
+                            ..
+                        } => "E".to_string(),
+                        RadarItem {
+                            entity: Some(Entity::Monster),
+                            ..
+                        } => "M".to_string(),
+                        _ => " ".to_string(),
+                    };
                 }
             }
         }
 
-        n = 0;
         for i in 0..7 {
             for j in 0..7 {
-                if i % 2 == 1 && j % 2 == 0 {
-                    match self.vertical_walls[n] {
-                        Some(true) => self.walls[i][j] = "1".to_string(),
-                        Some(false) => self.walls[i][j] = " ".to_string(),
-                        None => self.walls[i][j] = "#".to_string(),
-                    }
-                    n += 1;
+                if self.grid[i][j] == "|" {
+                    self.grid[i - 1][j] = "•".to_string();
+                    self.grid[i + 1][j] = "•".to_string();
+                }
+                if self.grid[i][j] == "-" {
+                    self.grid[i][j - 1] = "•".to_string();
+                    self.grid[i][j + 1] = "•".to_string();
                 }
             }
         }
@@ -127,7 +148,9 @@ impl RadarView {
         }
         log_debug!("==============================");
         let h_walls_bits: String = RadarView::convert_walls_bytes_to_string(h_walls_data);
-        self.horizontal_walls = RadarView::extract_walls_data_from_bits_string(&h_walls_bits);
+        self.horizontal_walls = RadarView::convert_horizontal_walls_to_matrix(
+            RadarView::extract_walls_data_from_bits_string(&h_walls_bits),
+        );
 
         let v_walls_data: &[u8] = &self.decoded_view[3..6];
         log_debug!("Vertical walls data bytes:");
@@ -136,7 +159,9 @@ impl RadarView {
         }
         log_debug!("==============================");
         let v_walls_bits: String = RadarView::convert_walls_bytes_to_string(v_walls_data);
-        self.vertical_walls = RadarView::extract_walls_data_from_bits_string(&v_walls_bits);
+        self.vertical_walls = RadarView::convert_vertical_walls_to_matrix(
+            RadarView::extract_walls_data_from_bits_string(&v_walls_bits),
+        );
 
         let cell_data: &[u8] = &self.decoded_view[6..11];
         log_debug!("Cell data bytes:");
@@ -145,97 +170,16 @@ impl RadarView {
         }
         log_debug!("==============================");
         let cell_bits: Vec<String> = RadarView::extract_cells_data(cell_data);
-        self.radar_items = cell_bits
-            .iter()
-            .map(|bits: &String| RadarView::get_radar_item_from_bits(bits))
-            .collect();
+        self.radar_items = RadarView::convert_cells_items_to_matrix(
+            cell_bits
+                .iter()
+                .map(|bits: &String| RadarView::get_radar_item_from_bits(bits)) // No Some()
+                .collect(),
+        );
 
         self.print_horizontal_walls();
         self.print_vertical_walls();
-        self.print_radar_items();
-    }
-
-    fn build_radar_matrix(&mut self) -> () {
-        let mut matrix: Vec<Vec<String>> = vec![vec![" ".to_string(); 7]; 7];
-
-        for i in 0..3 {
-            for j in 0..3 {
-                let row = 2 * i + 1;
-                let col = 2 * j + 1;
-                if let Some(item) = &self.radar_items[i * 3 + j] {
-                    matrix[row][col] = match item {
-                        RadarItem { is_goal: true, .. } => "G".to_string(),
-                        RadarItem { is_hint: true, .. } => "H".to_string(),
-                        RadarItem {
-                            entity: Some(Entity::Ally),
-                            ..
-                        } => "A".to_string(),
-                        RadarItem {
-                            entity: Some(Entity::Enemy),
-                            ..
-                        } => "E".to_string(),
-                        RadarItem {
-                            entity: Some(Entity::Monster),
-                            ..
-                        } => "M".to_string(),
-                        _ => "?".to_string(),
-                    };
-                } else {
-                    matrix[row][col] = "?".to_string();
-                }
-            }
-        }
-
-        for i in 0..4 {
-            for j in 0..3 {
-                let row = 2 * i;
-                let col = 2 * j + 1;
-                if let Some(true) = self.horizontal_walls[i * 3 + j] {
-                    matrix[row][col] = "-".to_string();
-                }
-            }
-        }
-
-        for i in 0..3 {
-            for j in 0..4 {
-                let row = 2 * i + 1;
-                let col = 2 * j;
-                if let Some(true) = self.vertical_walls[i * 4 + j] {
-                    matrix[row][col] = "|".to_string();
-                }
-            }
-        }
-
-        for i in 0..4 {
-            for j in 0..4 {
-                let row = 2 * i;
-                let col = 2 * j;
-                let has_horizontal = if j < 3 {
-                    self.horizontal_walls[i * 3 + j] == Some(true)
-                } else {
-                    false
-                };
-                let has_vertical = if i < 3 {
-                    self.vertical_walls[i * 4 + j] == Some(true)
-                } else {
-                    false
-                };
-
-                if has_horizontal && has_vertical {
-                    matrix[row][col] = "•".to_string();
-                }
-            }
-        }
-
-        for row in 0..7 {
-            for column in 0..7 {
-                if row == 0 || row == 6 || column == 0 || column == 6 {
-                    matrix[row][column] = "#".to_string();
-                }
-            }
-        }
-
-        self.grid = matrix.clone();
+        self.print_cells_items();
     }
 
     fn convert_walls_bytes_to_string(data: &[u8]) -> String {
@@ -263,14 +207,50 @@ impl RadarView {
         };
     }
 
+    fn convert_horizontal_walls_to_matrix(
+        boolean_options: Vec<Option<bool>>,
+    ) -> Vec<Vec<Option<bool>>> {
+        let mut matrix: Vec<Vec<Option<bool>>> = vec![vec![None; 3]; 4];
+
+        for (i, chunk) in boolean_options.chunks_exact(3).enumerate() {
+            matrix[i].copy_from_slice(chunk);
+        }
+
+        return matrix;
+    }
+
+    fn convert_vertical_walls_to_matrix(
+        boolean_options: Vec<Option<bool>>,
+    ) -> Vec<Vec<Option<bool>>> {
+        let mut matrix: Vec<Vec<Option<bool>>> = vec![vec![None; 4]; 3];
+
+        for (i, chunk) in boolean_options.chunks_exact(4).enumerate() {
+            matrix[i].copy_from_slice(chunk);
+        }
+
+        return matrix;
+    }
+
+    fn convert_cells_items_to_matrix(
+        cells_items: Vec<Option<RadarItem>>,
+    ) -> Vec<Vec<Option<RadarItem>>> {
+        cells_items.chunks(3).map(|chunk| chunk.to_vec()).collect()
+    }
+
     /*=============================================================*\
         PRINTERS
     *\=============================================================*/
 
     pub fn print_grid(&self) {
-        log_debug!("Radar view:");
+        log_debug!("Grid:");
         for row in &self.grid {
-            log_debug!("{}", row.join(""));
+            log_debug!("{:?}", row);
+        }
+    }
+
+    pub fn print_matrix<T: std::fmt::Debug>(matrix: &Vec<Vec<T>>) {
+        for row in matrix {
+            log_debug!("{:?}", row);
         }
 
         log_debug!("==============================");
@@ -278,83 +258,22 @@ impl RadarView {
 
     pub fn print_horizontal_walls(&self) {
         log_debug!("Horizontal walls:");
-        log_debug!(
-            "{:?} {:?} {:?}",
-            self.horizontal_walls[0],
-            self.horizontal_walls[1],
-            self.horizontal_walls[2],
-        );
-        log_debug!(
-            "{:?} {:?} {:?}",
-            self.horizontal_walls[3],
-            self.horizontal_walls[4],
-            self.horizontal_walls[5],
-        );
-        log_debug!(
-            "{:?} {:?} {:?}",
-            self.horizontal_walls[6],
-            self.horizontal_walls[7],
-            self.horizontal_walls[8],
-        );
-        log_debug!(
-            "{:?} {:?} {:?}",
-            self.horizontal_walls[9],
-            self.horizontal_walls[10],
-            self.horizontal_walls[11],
-        );
-
-        log_debug!("==============================");
+        let _ = RadarView::print_matrix(&self.horizontal_walls);
     }
 
     pub fn print_vertical_walls(&self) {
         log_debug!("Vertical walls:");
-        log_debug!(
-            "{:?} {:?} {:?} {:?}",
-            self.vertical_walls[0],
-            self.vertical_walls[1],
-            self.vertical_walls[2],
-            self.vertical_walls[3]
-        );
-        log_debug!(
-            "{:?} {:?} {:?} {:?}",
-            self.vertical_walls[4],
-            self.vertical_walls[5],
-            self.vertical_walls[6],
-            self.vertical_walls[7]
-        );
-        log_debug!(
-            "{:?} {:?} {:?} {:?}",
-            self.vertical_walls[8],
-            self.vertical_walls[9],
-            self.vertical_walls[10],
-            self.vertical_walls[11]
-        );
-
-        log_debug!("==============================");
+        let _ = RadarView::print_matrix(&self.vertical_walls);
     }
 
-    pub fn print_radar_items(&self) {
-        log_debug!("Radar items:");
-        log_debug!(
-            "{:?} {:?} {:?}",
-            self.radar_items[0],
-            self.radar_items[1],
-            self.radar_items[2]
-        );
-        log_debug!(
-            "{:?} {:?} {:?}",
-            self.radar_items[3],
-            self.radar_items[4],
-            self.radar_items[5]
-        );
-        log_debug!(
-            "{:?} {:?} {:?}",
-            self.radar_items[6],
-            self.radar_items[7],
-            self.radar_items[8]
-        );
+    pub fn print_cells_items(&self) {
+        log_debug!("Cells items:");
+        let _ = RadarView::print_matrix(&self.radar_items);
+    }
 
-        log_debug!("==============================");
+    pub fn print_walls(&self) {
+        log_debug!("Walls:");
+        let _ = RadarView::print_matrix(&self.grid);
     }
 
     pub fn print_encoded_view(&self) {
@@ -366,15 +285,6 @@ impl RadarView {
         log_debug!("Decoded view:");
         for byte in &self.decoded_view {
             log_debug!("{:08b}", byte);
-        }
-
-        log_debug!("==============================");
-    }
-
-    pub fn print_walls(&self) {
-        log_debug!("Walls:");
-        for row in &self.walls {
-            log_debug!("{}", row.join(""));
         }
 
         log_debug!("==============================");
@@ -501,41 +411,68 @@ impl RadarView {
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use super::*;
 
     #[test]
     fn test_new() {
-        let radar_view: RadarView =
+        let radar_view_1: RadarView =
             RadarView::new("ieysGjGO8papd/a".to_string(), Orientation::North);
+        radar_view_1.print_walls();
+        let expected_1: Vec<Vec<&str>> = vec![
+            vec!["#", "#", "•", " ", "•", "#", "#"],
+            vec!["#", "#", "|", " ", "|", "#", "#"],
+            vec!["•", "-", "•", " ", "•", "#", "#"],
+            vec!["|", " ", " ", " ", "|", "#", "#"],
+            vec!["•", " ", "•", "-", "•", "#", "#"],
+            vec!["|", " ", "#", "#", "#", "#", "#"],
+            vec!["•", "-", "•", "#", "#", "#", "#"],
+        ];
+        log_debug!("Expected walls 1:");
+        RadarView::print_matrix(&expected_1);
+        assert_eq!(radar_view_1.grid, expected_1);
 
-        radar_view.print_walls();
-        log_debug!("Expected radar view:");
-        log_debug!("##• •##");
-        log_debug!("##| |##");
-        log_debug!("•-• •##");
-        log_debug!("|   |##");
-        log_debug!("• •-•##");
-        log_debug!("| #####");
-        log_debug!("•-•####");
+        let radar_view_2: RadarView =
+            RadarView::new("aeiOacGM8a8p//a".to_string(), Orientation::North);
+        radar_view_2.print_walls();
+        let expected_2: Vec<Vec<&str>> = vec![
+            vec!["#", "#", "•", "-", "•", "-", "•"],
+            vec!["#", "#", "|", " ", " ", " ", "|"],
+            vec!["#", "#", "•", " ", "•", "#", "#"],
+            vec!["#", "#", "|", " ", "|", "#", "#"],
+            vec!["#", "#", "•", "-", "•", "#", "#"],
+            vec!["#", "#", "#", "#", "#", "#", "#"],
+            vec!["#", "#", "#", "#", "#", "#", "#"],
+        ];
+        log_debug!("Expected walls 2:");
+        RadarView::print_matrix(&expected_2);
+        assert_eq!(radar_view_2.grid, expected_2);
+
+        let radar_view_3: RadarView =
+            RadarView::new("HweGjsyO8p8a8aa".to_string(), Orientation::North);
+        radar_view_3.print_walls();
         /*
-        •-• • •
-              |
-        ##• •##
+        ##•-•##
         ##| |##
-        ##• •##
-            |##
-        • •-•##
-
-        ##•-• •
+        ##• •-•
+        ##|   |
+        ##• •-•
         ##|
-        ##• •##
-        ##| |##
-        ##• •##
-        |
-        • • •-•
-
-                south
-                */
+        ##• • •
+        */
+        let expected_3: Vec<Vec<&str>> = vec![
+            vec!["#", "#", "•", "-", "•", "#", "#"],
+            vec!["#", "#", "|", " ", "|", "#", "#"],
+            vec!["#", "#", "•", " ", "•", "-", "•"],
+            vec!["#", "#", "|", " ", " ", " ", "|"],
+            vec!["#", "#", "•", " ", "•", "-", "•"],
+            vec!["#", "#", "|", " ", " ", " ", " "],
+            vec!["#", "#", "•", " ", "•", " ", "•"],
+        ];
+        log_debug!("Expected walls 3:");
+        RadarView::print_matrix(&expected_3);
+        assert_eq!(radar_view_3.grid, expected_3);
     }
 
     #[test]
@@ -553,60 +490,6 @@ mod tests {
         log_debug!("| #####");
         log_debug!("•-•####");
     }
-
-    // #[test]
-    // fn test_merge_walls() {
-    //     let mut radar_view: RadarView = RadarView {
-    //         horizontal_walls: vec![
-    //             None,
-    //             Some(true),
-    //             None,
-    //             Some(true),
-    //             None,
-    //             None,
-    //             None,
-    //             Some(true),
-    //             None,
-    //             Some(true),
-    //             None,
-    //             None,
-    //         ],
-    //         vertical_walls: vec![
-    //             Some(true),
-    //             None,
-    //             None,
-    //             Some(true),
-    //             None,
-    //             None,
-    //             None,
-    //             Some(true),
-    //             None,
-    //             Some(true),
-    //             Some(true),
-    //             None,
-    //         ],
-    //         radar_items: vec![None; 9],
-    //         walls: vec![],
-    //         encoded_view: todo!(),
-    //         decoded_view: todo!(),
-    //         grid: todo!(),
-    //         orientation: todo!(),
-    //     };
-
-    //     radar_view.merge_walls();
-
-    //     let expected_walls: Vec<Vec<&str>> = vec![
-    //         vec!["#", "#", "•", "-", "•", "#", "#"],
-    //         vec!["#", "#", "|", " ", "|", "#", "#"],
-    //         vec!["•", "-", "•", " ", "•", "#", "#"],
-    //         vec!["|", " ", " ", " ", "|", "#", "#"],
-    //         vec!["•", " ", "•", "-", "•", "#", "#"],
-    //         vec!["|", " ", "#", "#", "#", "#", "#"],
-    //         vec!["•", "-", "•", "#", "#", "#", "#"],
-    //     ];
-
-    //     assert_eq!(radar_view.walls, expected_walls);
-    // }
 
     #[test]
     fn test_extract_cell_bits() {
@@ -694,10 +577,9 @@ mod tests {
         let radar_view: RadarView = RadarView {
             encoded_view: "".to_string(),
             decoded_view: vec![],
-            horizontal_walls: vec![None; 12],
-            vertical_walls: vec![None; 12],
-            radar_items: vec![None; 9],
-            walls: vec![],
+            horizontal_walls: vec![],
+            vertical_walls: vec![],
+            radar_items: vec![],
             grid: vec![
                 vec![
                     "1".to_string(),
@@ -843,10 +725,9 @@ mod tests {
         let mut radar_view: RadarView = RadarView {
             encoded_view: "ieysGjGO8papd/a".to_string(),
             decoded_view: vec![],
-            horizontal_walls: vec![None; 12],
-            vertical_walls: vec![None; 12],
-            radar_items: vec![None; 9],
-            walls: vec![],
+            horizontal_walls: vec![],
+            vertical_walls: vec![],
+            radar_items: vec![],
             grid: vec![
                 vec![
                     "43".to_string(),
