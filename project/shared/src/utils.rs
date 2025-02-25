@@ -28,9 +28,6 @@ pub fn decode_base64(input: &str) -> Result<Vec<u8>, String> {
     // Creates an array of 128 elements with a default value of 255.
     // Default value of 255 means "invalid character".
     let mut lookup_table: [u8; 128] = [255u8; 128];
-    for i in 0..lookup_table.len() {
-        log_debug!("byte: {}", lookup_table[i]);
-    }
     for (i, &symbol) in BASE64_TABLE.iter().enumerate() {
         lookup_table[symbol as usize] = i as u8; // Store the Base64 index in the table.
     }

@@ -98,16 +98,16 @@ impl RadarView {
                         RadarItem {
                             entity: Some(Entity::Ally),
                             ..
-                        } => "A".to_string(),
+                        } => String::from("A"),
                         RadarItem {
                             entity: Some(Entity::Enemy),
                             ..
-                        } => "E".to_string(),
+                        } => String::from("E"),
                         RadarItem {
                             entity: Some(Entity::Monster),
                             ..
-                        } => "M".to_string(),
-                        _ => " ".to_string(),
+                        } => String::from("M"),
+                        _ => String::from(" "),
                     };
                 }
             }
@@ -116,12 +116,12 @@ impl RadarView {
         for i in 0..7 {
             for j in 0..7 {
                 if self.grid[i][j] == "|" {
-                    self.grid[i - 1][j] = "•".to_string();
-                    self.grid[i + 1][j] = "•".to_string();
+                    self.grid[i - 1][j] = String::from("•");
+                    self.grid[i + 1][j] = String::from("•");
                 }
                 if self.grid[i][j] == "-" {
-                    self.grid[i][j - 1] = "•".to_string();
-                    self.grid[i][j + 1] = "•".to_string();
+                    self.grid[i][j - 1] = String::from("•");
+                    self.grid[i][j + 1] = String::from("•");
                 }
             }
         }
@@ -419,7 +419,7 @@ mod tests {
     fn test_new() {
         let radar_view_1: RadarView =
             RadarView::new("ieysGjGO8papd/a".to_string(), Orientation::North);
-        radar_view_1.print_walls();
+        radar_view_1.print_grid();
         let expected_1: Vec<Vec<&str>> = vec![
             vec!["#", "#", "•", " ", "•", "#", "#"],
             vec!["#", "#", "|", " ", "|", "#", "#"],
@@ -435,7 +435,7 @@ mod tests {
 
         let radar_view_2: RadarView =
             RadarView::new("aeiOacGM8a8p//a".to_string(), Orientation::North);
-        radar_view_2.print_walls();
+        radar_view_2.print_grid();
         let expected_2: Vec<Vec<&str>> = vec![
             vec!["#", "#", "•", "-", "•", "-", "•"],
             vec!["#", "#", "|", " ", " ", " ", "|"],
@@ -451,7 +451,7 @@ mod tests {
 
         let radar_view_3: RadarView =
             RadarView::new("HweGjsyO8p8a8aa".to_string(), Orientation::North);
-        radar_view_3.print_walls();
+        radar_view_3.print_grid();
         /*
         ##•-•##
         ##| |##
