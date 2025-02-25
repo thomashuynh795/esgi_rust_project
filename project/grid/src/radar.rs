@@ -65,13 +65,13 @@ impl RadarView {
     }
 
     pub fn merge_walls(&mut self) {
-        self.grid = vec![vec!["#".to_string(); 7]; 7];
+        self.grid = vec![vec![String::from("#"); 7]; 7];
 
         for i in 0..4 {
             for j in 0..3 {
                 match self.horizontal_walls[i][j] {
-                    Some(true) => self.grid[2 * i][2 * j + 1] = "-".to_string(),
-                    Some(false) => self.grid[2 * i][2 * j + 1] = " ".to_string(),
+                    Some(true) => self.grid[2 * i][2 * j + 1] = String::from("-"),
+                    Some(false) => self.grid[2 * i][2 * j + 1] = String::from(" "),
                     None => (),
                 }
             }
@@ -80,8 +80,8 @@ impl RadarView {
         for i in 0..3 {
             for j in 0..4 {
                 match self.vertical_walls[i][j] {
-                    Some(true) => self.grid[2 * i + 1][2 * j] = "|".to_string(),
-                    Some(false) => self.grid[2 * i + 1][2 * j] = " ".to_string(),
+                    Some(true) => self.grid[2 * i + 1][2 * j] = String::from("|"),
+                    Some(false) => self.grid[2 * i + 1][2 * j] = String::from(" "),
                     None => (),
                 }
             }
@@ -93,8 +93,8 @@ impl RadarView {
 
                 if let Some(radar_item) = &self.radar_items[i][j] {
                     self.grid[wall_x][wall_y] = match radar_item {
-                        RadarItem { is_hint: true, .. } => "H".to_string(),
-                        RadarItem { is_goal: true, .. } => "G".to_string(),
+                        RadarItem { is_hint: true, .. } => String::from("H"),
+                        RadarItem { is_goal: true, .. } => String::from("G"),
                         RadarItem {
                             entity: Some(Entity::Ally),
                             ..
@@ -394,7 +394,7 @@ impl RadarView {
 
     fn rotate_90_clockwise(matrix: &Vec<Vec<String>>) -> Vec<Vec<String>> {
         let n: usize = matrix.len();
-        let mut rotated: Vec<Vec<String>> = vec![vec!["#".to_string(); n]; n];
+        let mut rotated: Vec<Vec<String>> = vec![vec![String::from("#"); n]; n];
         for row in 0..n {
             for column in 0..n {
                 rotated[column][n - 1 - row] = matrix[row][column].clone();
@@ -418,7 +418,7 @@ mod tests {
     #[test]
     fn test_new() {
         let radar_view_1: RadarView =
-            RadarView::new("ieysGjGO8papd/a".to_string(), Orientation::North);
+            RadarView::new(String::from("ieysGjGO8papd/a"), Orientation::North);
         radar_view_1.print_grid();
         let expected_1: Vec<Vec<&str>> = vec![
             vec!["#", "#", "•", " ", "•", "#", "#"],
@@ -434,7 +434,7 @@ mod tests {
         assert_eq!(radar_view_1.grid, expected_1);
 
         let radar_view_2: RadarView =
-            RadarView::new("aeiOacGM8a8p//a".to_string(), Orientation::North);
+            RadarView::new(String::from("aeiOacGM8a8p//a"), Orientation::North);
         radar_view_2.print_grid();
         let expected_2: Vec<Vec<&str>> = vec![
             vec!["#", "#", "•", "-", "•", "-", "•"],
@@ -450,7 +450,7 @@ mod tests {
         assert_eq!(radar_view_2.grid, expected_2);
 
         let radar_view_3: RadarView =
-            RadarView::new("HweGjsyO8p8a8aa".to_string(), Orientation::North);
+            RadarView::new(String::from("HweGjsyO8p8a8aa"), Orientation::North);
         radar_view_3.print_grid();
         /*
         ##•-•##
@@ -478,7 +478,7 @@ mod tests {
     #[test]
     fn test_build_matrix() {
         let radar_view: RadarView =
-            RadarView::new("geguwcHwaa8papa".to_string(), Orientation::North);
+            RadarView::new(String::from("geguwcHwaa8papa"), Orientation::North);
 
         radar_view.print_grid();
         log_debug!("Expected radar view:");
@@ -499,15 +499,15 @@ mod tests {
         assert_eq!(
             extracted_bits,
             vec![
-                "1111".to_string(),
-                "0000".to_string(),
-                "1111".to_string(),
-                "0000".to_string(),
-                "0000".to_string(),
-                "1111".to_string(),
-                "0000".to_string(),
-                "1111".to_string(),
-                "1111".to_string()
+                String::from("1111"),
+                String::from("0000"),
+                String::from("1111"),
+                String::from("0000"),
+                String::from("0000"),
+                String::from("1111"),
+                String::from("0000"),
+                String::from("1111"),
+                String::from("1111")
             ]
         );
     }
@@ -575,74 +575,74 @@ mod tests {
     #[test]
     fn test_rotate_90_clockwise() {
         let radar_view: RadarView = RadarView {
-            encoded_view: "".to_string(),
+            encoded_view: String::from(""),
             decoded_view: vec![],
             horizontal_walls: vec![],
             vertical_walls: vec![],
             radar_items: vec![],
             grid: vec![
                 vec![
-                    "1".to_string(),
-                    "2".to_string(),
-                    "3".to_string(),
-                    "4".to_string(),
-                    "5".to_string(),
-                    "6".to_string(),
-                    "7".to_string(),
+                    String::from("1"),
+                    String::from("2"),
+                    String::from("3"),
+                    String::from("4"),
+                    String::from("5"),
+                    String::from("6"),
+                    String::from("7"),
                 ],
                 vec![
-                    "8".to_string(),
-                    "9".to_string(),
-                    "10".to_string(),
-                    "11".to_string(),
-                    "12".to_string(),
-                    "13".to_string(),
-                    "14".to_string(),
+                    String::from("8"),
+                    String::from("9"),
+                    String::from("10"),
+                    String::from("11"),
+                    String::from("12"),
+                    String::from("13"),
+                    String::from("14"),
                 ],
                 vec![
-                    "15".to_string(),
-                    "16".to_string(),
-                    "17".to_string(),
-                    "18".to_string(),
-                    "19".to_string(),
-                    "20".to_string(),
-                    "21".to_string(),
+                    String::from("15"),
+                    String::from("16"),
+                    String::from("17"),
+                    String::from("18"),
+                    String::from("19"),
+                    String::from("20"),
+                    String::from("21"),
                 ],
                 vec![
-                    "22".to_string(),
-                    "23".to_string(),
-                    "24".to_string(),
-                    "25".to_string(),
-                    "26".to_string(),
-                    "27".to_string(),
-                    "28".to_string(),
+                    String::from("22"),
+                    String::from("23"),
+                    String::from("24"),
+                    String::from("25"),
+                    String::from("26"),
+                    String::from("27"),
+                    String::from("28"),
                 ],
                 vec![
-                    "29".to_string(),
-                    "30".to_string(),
-                    "31".to_string(),
-                    "32".to_string(),
-                    "33".to_string(),
-                    "34".to_string(),
-                    "35".to_string(),
+                    String::from("29"),
+                    String::from("30"),
+                    String::from("31"),
+                    String::from("32"),
+                    String::from("33"),
+                    String::from("34"),
+                    String::from("35"),
                 ],
                 vec![
-                    "36".to_string(),
-                    "37".to_string(),
-                    "38".to_string(),
-                    "39".to_string(),
-                    "40".to_string(),
-                    "41".to_string(),
-                    "42".to_string(),
+                    String::from("36"),
+                    String::from("37"),
+                    String::from("38"),
+                    String::from("39"),
+                    String::from("40"),
+                    String::from("41"),
+                    String::from("42"),
                 ],
                 vec![
-                    "43".to_string(),
-                    "44".to_string(),
-                    "45".to_string(),
-                    "46".to_string(),
-                    "47".to_string(),
-                    "48".to_string(),
-                    "49".to_string(),
+                    String::from("43"),
+                    String::from("44"),
+                    String::from("45"),
+                    String::from("46"),
+                    String::from("47"),
+                    String::from("48"),
+                    String::from("49"),
                 ],
             ],
             orientation: Orientation::North,
@@ -650,67 +650,67 @@ mod tests {
 
         let expected: Vec<Vec<String>> = vec![
             vec![
-                "43".to_string(),
-                "36".to_string(),
-                "29".to_string(),
-                "22".to_string(),
-                "15".to_string(),
-                "8".to_string(),
-                "1".to_string(),
+                String::from("43"),
+                String::from("36"),
+                String::from("29"),
+                String::from("22"),
+                String::from("15"),
+                String::from("8"),
+                String::from("1"),
             ],
             vec![
-                "44".to_string(),
-                "37".to_string(),
-                "30".to_string(),
-                "23".to_string(),
-                "16".to_string(),
-                "9".to_string(),
-                "2".to_string(),
+                String::from("44"),
+                String::from("37"),
+                String::from("30"),
+                String::from("23"),
+                String::from("16"),
+                String::from("9"),
+                String::from("2"),
             ],
             vec![
-                "45".to_string(),
-                "38".to_string(),
-                "31".to_string(),
-                "24".to_string(),
-                "17".to_string(),
-                "10".to_string(),
-                "3".to_string(),
+                String::from("45"),
+                String::from("38"),
+                String::from("31"),
+                String::from("24"),
+                String::from("17"),
+                String::from("10"),
+                String::from("3"),
             ],
             vec![
-                "46".to_string(),
-                "39".to_string(),
-                "32".to_string(),
-                "25".to_string(),
-                "18".to_string(),
-                "11".to_string(),
-                "4".to_string(),
+                String::from("46"),
+                String::from("39"),
+                String::from("32"),
+                String::from("25"),
+                String::from("18"),
+                String::from("11"),
+                String::from("4"),
             ],
             vec![
-                "47".to_string(),
-                "40".to_string(),
-                "33".to_string(),
-                "26".to_string(),
-                "19".to_string(),
-                "12".to_string(),
-                "5".to_string(),
+                String::from("47"),
+                String::from("40"),
+                String::from("33"),
+                String::from("26"),
+                String::from("19"),
+                String::from("12"),
+                String::from("5"),
             ],
             vec![
-                "48".to_string(),
-                "41".to_string(),
-                "34".to_string(),
-                "27".to_string(),
-                "20".to_string(),
-                "13".to_string(),
-                "6".to_string(),
+                String::from("48"),
+                String::from("41"),
+                String::from("34"),
+                String::from("27"),
+                String::from("20"),
+                String::from("13"),
+                String::from("6"),
             ],
             vec![
-                "49".to_string(),
-                "42".to_string(),
-                "35".to_string(),
-                "28".to_string(),
-                "21".to_string(),
-                "14".to_string(),
-                "7".to_string(),
+                String::from("49"),
+                String::from("42"),
+                String::from("35"),
+                String::from("28"),
+                String::from("21"),
+                String::from("14"),
+                String::from("7"),
             ],
         ];
 
@@ -723,74 +723,74 @@ mod tests {
     #[test]
     fn test_rotate_radar_view() {
         let mut radar_view: RadarView = RadarView {
-            encoded_view: "ieysGjGO8papd/a".to_string(),
+            encoded_view: String::from("ieysGjGO8papd/a"),
             decoded_view: vec![],
             horizontal_walls: vec![],
             vertical_walls: vec![],
             radar_items: vec![],
             grid: vec![
                 vec![
-                    "43".to_string(),
-                    "36".to_string(),
-                    "29".to_string(),
-                    "22".to_string(),
-                    "15".to_string(),
-                    "8".to_string(),
-                    "1".to_string(),
+                    String::from("43"),
+                    String::from("36"),
+                    String::from("29"),
+                    String::from("22"),
+                    String::from("15"),
+                    String::from("8"),
+                    String::from("1"),
                 ],
                 vec![
-                    "44".to_string(),
-                    "37".to_string(),
-                    "30".to_string(),
-                    "23".to_string(),
-                    "16".to_string(),
-                    "9".to_string(),
-                    "2".to_string(),
+                    String::from("44"),
+                    String::from("37"),
+                    String::from("30"),
+                    String::from("23"),
+                    String::from("16"),
+                    String::from("9"),
+                    String::from("2"),
                 ],
                 vec![
-                    "45".to_string(),
-                    "38".to_string(),
-                    "31".to_string(),
-                    "24".to_string(),
-                    "17".to_string(),
-                    "10".to_string(),
-                    "3".to_string(),
+                    String::from("45"),
+                    String::from("38"),
+                    String::from("31"),
+                    String::from("24"),
+                    String::from("17"),
+                    String::from("10"),
+                    String::from("3"),
                 ],
                 vec![
-                    "46".to_string(),
-                    "39".to_string(),
-                    "32".to_string(),
-                    "25".to_string(),
-                    "18".to_string(),
-                    "11".to_string(),
-                    "4".to_string(),
+                    String::from("46"),
+                    String::from("39"),
+                    String::from("32"),
+                    String::from("25"),
+                    String::from("18"),
+                    String::from("11"),
+                    String::from("4"),
                 ],
                 vec![
-                    "47".to_string(),
-                    "40".to_string(),
-                    "33".to_string(),
-                    "26".to_string(),
-                    "19".to_string(),
-                    "12".to_string(),
-                    "5".to_string(),
+                    String::from("47"),
+                    String::from("40"),
+                    String::from("33"),
+                    String::from("26"),
+                    String::from("19"),
+                    String::from("12"),
+                    String::from("5"),
                 ],
                 vec![
-                    "48".to_string(),
-                    "41".to_string(),
-                    "34".to_string(),
-                    "27".to_string(),
-                    "20".to_string(),
-                    "13".to_string(),
-                    "6".to_string(),
+                    String::from("48"),
+                    String::from("41"),
+                    String::from("34"),
+                    String::from("27"),
+                    String::from("20"),
+                    String::from("13"),
+                    String::from("6"),
                 ],
                 vec![
-                    "49".to_string(),
-                    "42".to_string(),
-                    "35".to_string(),
-                    "28".to_string(),
-                    "21".to_string(),
-                    "14".to_string(),
-                    "7".to_string(),
+                    String::from("49"),
+                    String::from("42"),
+                    String::from("35"),
+                    String::from("28"),
+                    String::from("21"),
+                    String::from("14"),
+                    String::from("7"),
                 ],
             ],
             orientation: Orientation::East,
@@ -800,67 +800,67 @@ mod tests {
 
         let expected_grid: Vec<Vec<String>> = vec![
             vec![
-                "1".to_string(),
-                "2".to_string(),
-                "3".to_string(),
-                "4".to_string(),
-                "5".to_string(),
-                "6".to_string(),
-                "7".to_string(),
+                String::from("1"),
+                String::from("2"),
+                String::from("3"),
+                String::from("4"),
+                String::from("5"),
+                String::from("6"),
+                String::from("7"),
             ],
             vec![
-                "8".to_string(),
-                "9".to_string(),
-                "10".to_string(),
-                "11".to_string(),
-                "12".to_string(),
-                "13".to_string(),
-                "14".to_string(),
+                String::from("8"),
+                String::from("9"),
+                String::from("10"),
+                String::from("11"),
+                String::from("12"),
+                String::from("13"),
+                String::from("14"),
             ],
             vec![
-                "15".to_string(),
-                "16".to_string(),
-                "17".to_string(),
-                "18".to_string(),
-                "19".to_string(),
-                "20".to_string(),
-                "21".to_string(),
+                String::from("15"),
+                String::from("16"),
+                String::from("17"),
+                String::from("18"),
+                String::from("19"),
+                String::from("20"),
+                String::from("21"),
             ],
             vec![
-                "22".to_string(),
-                "23".to_string(),
-                "24".to_string(),
-                "25".to_string(),
-                "26".to_string(),
-                "27".to_string(),
-                "28".to_string(),
+                String::from("22"),
+                String::from("23"),
+                String::from("24"),
+                String::from("25"),
+                String::from("26"),
+                String::from("27"),
+                String::from("28"),
             ],
             vec![
-                "29".to_string(),
-                "30".to_string(),
-                "31".to_string(),
-                "32".to_string(),
-                "33".to_string(),
-                "34".to_string(),
-                "35".to_string(),
+                String::from("29"),
+                String::from("30"),
+                String::from("31"),
+                String::from("32"),
+                String::from("33"),
+                String::from("34"),
+                String::from("35"),
             ],
             vec![
-                "36".to_string(),
-                "37".to_string(),
-                "38".to_string(),
-                "39".to_string(),
-                "40".to_string(),
-                "41".to_string(),
-                "42".to_string(),
+                String::from("36"),
+                String::from("37"),
+                String::from("38"),
+                String::from("39"),
+                String::from("40"),
+                String::from("41"),
+                String::from("42"),
             ],
             vec![
-                "43".to_string(),
-                "44".to_string(),
-                "45".to_string(),
-                "46".to_string(),
-                "47".to_string(),
-                "48".to_string(),
-                "49".to_string(),
+                String::from("43"),
+                String::from("44"),
+                String::from("45"),
+                String::from("46"),
+                String::from("47"),
+                String::from("48"),
+                String::from("49"),
             ],
         ];
 
