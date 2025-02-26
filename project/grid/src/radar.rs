@@ -65,7 +65,7 @@ impl RadarView {
     }
 
     pub fn merge_walls(&mut self) {
-        self.grid = vec![vec![String::from("#"); 7]; 7];
+        self.grid = vec![vec![String::from(" "); 7]; 7];
 
         for i in 0..4 {
             for j in 0..3 {
@@ -116,14 +116,247 @@ impl RadarView {
         for i in 0..7 {
             for j in 0..7 {
                 if self.grid[i][j] == "|" {
-                    self.grid[i - 1][j] = String::from("•");
-                    self.grid[i + 1][j] = String::from("•");
+                    if i > 0 {
+                        self.grid[i - 1][j] = "•".to_string();
+                    }
+                    if i < 6 {
+                        self.grid[i + 1][j] = "•".to_string();
+                    }
                 }
                 if self.grid[i][j] == "-" {
-                    self.grid[i][j - 1] = String::from("•");
-                    self.grid[i][j + 1] = String::from("•");
+                    if j > 0 {
+                        self.grid[i][j - 1] = "•".to_string();
+                    }
+                    if j < 6 {
+                        self.grid[i][j + 1] = "•".to_string();
+                    }
                 }
             }
+        }
+
+        // •-###-•
+        // | ### |
+        // • •-• •
+        // |  P  |
+        // •     •
+        // |     |
+        // •-•-•-•
+        if self.grid[2][3] == String::from("-") {
+            self.grid[0][2] = String::from("#");
+            self.grid[1][2] = String::from("#");
+            self.grid[0][3] = String::from("#");
+            self.grid[1][3] = String::from("#");
+            self.grid[0][4] = String::from("#");
+            self.grid[1][4] = String::from("#");
+            // #####-•
+            // ##### |
+            // •-•-• •
+            // |  P  |
+            // •     •
+            // |     |
+            // •-•-•-•
+            if self.grid[2][1] == String::from("-") {
+                self.grid[0][0] = String::from("#");
+                self.grid[0][1] = String::from("#");
+                self.grid[1][0] = String::from("#");
+                self.grid[1][1] = String::from("#");
+            }
+            // •-#####
+            // | #####
+            // • •-•-•
+            // |  P  |
+            // •     •
+            // |     |
+            // •-•-•-•
+            if self.grid[2][5] == String::from("-") {
+                self.grid[0][5] = String::from("#");
+                self.grid[0][6] = String::from("#");
+                self.grid[1][5] = String::from("#");
+                self.grid[1][6] = String::from("#");
+            }
+        }
+        // •-•-•-•
+        // |     |
+        // ##•   •
+        // ##|P  |
+        // ##•   •
+        // |     |
+        // •-•-•-•
+        if self.grid[3][2] == String::from("|") {
+            self.grid[2][0] = String::from("#");
+            self.grid[2][1] = String::from("#");
+            self.grid[3][0] = String::from("#");
+            self.grid[3][1] = String::from("#");
+            self.grid[4][0] = String::from("#");
+            self.grid[4][1] = String::from("#");
+            // ##•-•-•
+            // ##|   |
+            // ##•   •
+            // ##|P  |
+            // ##•   •
+            // |     |
+            // •-•-•-•
+            if self.grid[1][2] == String::from("|") {
+                self.grid[0][0] = String::from("#");
+                self.grid[0][1] = String::from("#");
+                self.grid[1][0] = String::from("#");
+                self.grid[1][1] = String::from("#");
+            }
+            // •-•-•-•
+            // |     |
+            // ##•   •
+            // ##|P  |
+            // ##•   •
+            // ##|   |
+            // ##•-•-•
+            if self.grid[5][2] == String::from("|") {
+                self.grid[6][0] = String::from("#");
+                self.grid[6][1] = String::from("#");
+                self.grid[5][0] = String::from("#");
+                self.grid[5][1] = String::from("#");
+            }
+        }
+        // •-•-•-•
+        // |     |
+        // •     •
+        // |  P  |
+        // • •-• •
+        // | ### |
+        // •-###-•
+        if self.grid[4][3] == String::from("-") {
+            self.grid[5][2] = String::from("#");
+            self.grid[5][3] = String::from("#");
+            self.grid[5][4] = String::from("#");
+            self.grid[6][2] = String::from("#");
+            self.grid[6][3] = String::from("#");
+            self.grid[6][4] = String::from("#");
+            // •-•-•-•
+            // |     |
+            // •     •
+            // |  P  |
+            // •-•-• •
+            // ##### |
+            // #####-•
+            if self.grid[4][1] == String::from("-") {
+                self.grid[5][0] = String::from("#");
+                self.grid[5][1] = String::from("#");
+                self.grid[6][0] = String::from("#");
+                self.grid[6][1] = String::from("#");
+            }
+            // •-•-•-•
+            // |     |
+            // •     •
+            // |  P  |
+            // • •-•-•
+            // | #####
+            // •-#####
+            if self.grid[4][5] == String::from("-") {
+                self.grid[5][5] = String::from("#");
+                self.grid[5][6] = String::from("#");
+                self.grid[6][5] = String::from("#");
+                self.grid[6][6] = String::from("#");
+            }
+        }
+        // •-•-•-•
+        // |     |
+        // •   •##
+        // |  P|##
+        // •   •##
+        // |     |
+        // •-•-•-•
+        if self.grid[3][4] == String::from("|") {
+            self.grid[2][5] = String::from("#");
+            self.grid[2][6] = String::from("#");
+            self.grid[3][5] = String::from("#");
+            self.grid[3][6] = String::from("#");
+            self.grid[4][5] = String::from("#");
+            self.grid[4][6] = String::from("#");
+            // •-•-•##
+            // |   |##
+            // •   •##
+            // |  P|##
+            // •   •##
+            // |     |
+            // •-•-•-•
+            if self.grid[1][4] == String::from("|") {
+                self.grid[0][5] = String::from("#");
+                self.grid[0][6] = String::from("#");
+                self.grid[1][5] = String::from("#");
+                self.grid[1][6] = String::from("#");
+            }
+            // •-•-•-•
+            // |     |
+            // •   •##
+            // |  P|##
+            // •   •##
+            // |   |##
+            // •-•-•##
+            if self.grid[5][4] == String::from("|") {
+                self.grid[5][5] = String::from("#");
+                self.grid[5][6] = String::from("#");
+                self.grid[6][5] = String::from("#");
+                self.grid[6][6] = String::from("#");
+            }
+        }
+        // ##•-•-•
+        // ##|   |
+        // •-•   •
+        // |  P  |
+        // •     •
+        // |     |
+        // •-•-•-•
+        if self.grid[1][2] == String::from("|") && self.grid[2][1] == String::from("-")
+            || (self.grid[2][3] == String::from("-") && self.grid[3][2] == String::from("|"))
+        {
+            self.grid[0][0] = String::from("#");
+            self.grid[0][1] = String::from("#");
+            self.grid[1][0] = String::from("#");
+            self.grid[1][1] = String::from("#");
+        }
+        // •-•-•##
+        // |   |##
+        // •   •-•
+        // |  P  |
+        // •     •
+        // |     |
+        // •-•-•-•
+        if self.grid[2][5] == String::from("-") && self.grid[1][4] == String::from("|")
+            || (self.grid[2][3] == String::from("-") && self.grid[3][4] == String::from("|"))
+        {
+            self.grid[0][6] = String::from("#");
+            self.grid[0][5] = String::from("#");
+            self.grid[1][6] = String::from("#");
+            self.grid[1][5] = String::from("#");
+        }
+        // •-•-•-•
+        // |     |
+        // •     •
+        // |  P  |
+        // •-•   •
+        // ##|   |
+        // ##•-•-•
+        if self.grid[4][1] == String::from("-") && self.grid[5][2] == String::from("|")
+            || (self.grid[3][2] == String::from("|") && self.grid[4][3] == String::from("-"))
+        {
+            self.grid[6][0] = String::from("#");
+            self.grid[6][1] = String::from("#");
+            self.grid[5][0] = String::from("#");
+            self.grid[5][1] = String::from("#");
+        }
+        // •-•-•-•
+        // |     |
+        // •     •
+        // |  P  |
+        // •   •-•
+        // |   |##
+        // •-•-•##
+        if self.grid[4][5] == String::from("-") && self.grid[5][4] == String::from("|")
+            || (self.grid[3][4] == String::from("|") && self.grid[4][3] == String::from("-"))
+        {
+            self.grid[5][5] = String::from("#");
+            self.grid[5][6] = String::from("#");
+            self.grid[6][5] = String::from("#");
+            self.grid[6][6] = String::from("#");
         }
     }
 
@@ -244,7 +477,7 @@ impl RadarView {
     pub fn print_grid(&self) {
         log_debug!("Grid:");
         for row in &self.grid {
-            log_debug!("{:?}", row);
+            log_debug!("{}", row.join(" "));
         }
     }
 
@@ -427,51 +660,66 @@ mod tests {
             vec!["|", " ", " ", " ", "|", "#", "#"],
             vec!["•", " ", "•", "-", "•", "#", "#"],
             vec!["|", " ", "#", "#", "#", "#", "#"],
-            vec!["•", "-", "•", "#", "#", "#", "#"],
+            vec!["•", "-", "#", "#", "#", "#", "#"],
         ];
         log_debug!("Expected walls 1:");
-        RadarView::print_matrix(&expected_1);
+        for row in &expected_1 {
+            log_debug!("{}", row.join(" "));
+        }
         assert_eq!(radar_view_1.grid, expected_1);
 
         let radar_view_2: RadarView =
-            RadarView::new(String::from("aeiOacGM8a8p//a"), Orientation::North);
+            RadarView::new(String::from("zAeaMsua//8aaaa"), Orientation::North);
         radar_view_2.print_grid();
+        /*
+        #######
+        #######
+        ##•-•-•
+        ##|
+        ##• •
+        |   |
+        •-• •
+        */
         let expected_2: Vec<Vec<&str>> = vec![
+            vec!["#", "#", "#", "#", "#", "#", "#"],
+            vec!["#", "#", "#", "#", "#", "#", "#"],
             vec!["#", "#", "•", "-", "•", "-", "•"],
-            vec!["#", "#", "|", " ", " ", " ", "|"],
-            vec!["#", "#", "•", " ", "•", "#", "#"],
-            vec!["#", "#", "|", " ", "|", "#", "#"],
-            vec!["#", "#", "•", "-", "•", "#", "#"],
-            vec!["#", "#", "#", "#", "#", "#", "#"],
-            vec!["#", "#", "#", "#", "#", "#", "#"],
+            vec!["#", "#", "|", " ", " ", " ", " "],
+            vec!["#", "#", "•", " ", "•", " ", " "],
+            vec!["|", " ", " ", " ", "|", " ", " "],
+            vec!["•", "-", "•", " ", "•", " ", " "],
         ];
         log_debug!("Expected walls 2:");
-        RadarView::print_matrix(&expected_2);
+        for row in &expected_2 {
+            log_debug!("{}", row.join(" "));
+        }
         assert_eq!(radar_view_2.grid, expected_2);
 
         let radar_view_3: RadarView =
-            RadarView::new(String::from("HweGjsyO8p8a8aa"), Orientation::North);
+            RadarView::new(String::from("kevQAjIvaaapapa"), Orientation::North);
         radar_view_3.print_grid();
         /*
-        ##•-•##
-        ##| |##
-        ##• •-•
-        ##|   |
-        ##• •-•
-        ##|
-        ##• • •
+        • •-•-•
+        |
+        •-• •##
+        |   |##
+        • • •##
+        | |##
+        •-•-•##
         */
         let expected_3: Vec<Vec<&str>> = vec![
-            vec!["#", "#", "•", "-", "•", "#", "#"],
-            vec!["#", "#", "|", " ", "|", "#", "#"],
-            vec!["#", "#", "•", " ", "•", "-", "•"],
-            vec!["#", "#", "|", " ", " ", " ", "|"],
-            vec!["#", "#", "•", " ", "•", "-", "•"],
-            vec!["#", "#", "|", " ", " ", " ", " "],
-            vec!["#", "#", "•", " ", "•", " ", "•"],
+            vec!["•", " ", "•", "-", "•", "-", "•"],
+            vec!["|", " ", " ", " ", " ", " ", " "],
+            vec!["•", "-", "•", " ", "•", "#", "#"],
+            vec!["|", " ", " ", " ", "|", "#", "#"],
+            vec!["•", " ", "•", " ", "•", "#", "#"],
+            vec!["|", " ", "|", " ", "#", "#", "#"],
+            vec!["•", "-", "•", "-", "•", "#", "#"],
         ];
         log_debug!("Expected walls 3:");
-        RadarView::print_matrix(&expected_3);
+        for row in &expected_3 {
+            log_debug!("{}", row.join(" "));
+        }
         assert_eq!(radar_view_3.grid, expected_3);
     }
 
