@@ -653,6 +653,15 @@ mod tests {
         let radar_view_1: RadarView =
             RadarView::new(String::from("ieysGjGO8papd/a"), Orientation::North);
         radar_view_1.print_grid();
+        /*
+        ##• •##
+        ##| |##
+        •-• •##
+        |   |##
+        • •-•##
+        | #####
+        •-•####
+        */
         let expected_1: Vec<Vec<&str>> = vec![
             vec!["#", "#", "•", " ", "•", "#", "#"],
             vec!["#", "#", "|", " ", "|", "#", "#"],
