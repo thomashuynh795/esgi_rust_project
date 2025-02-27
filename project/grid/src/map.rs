@@ -1,34 +1,68 @@
 use shared::log_info;
 
+#[derive(Debug, Clone, Copy)]
+pub enum Direction {
+    North,
+    East,
+    South,
+    West,
+}
+
 pub struct Map {
     pub position: (isize, isize),
     pub grid: Vec<Vec<String>>,
 }
 
 impl Map {
-    pub fn new(encoded_first_radar_view: &str) -> Result<Map, &'static str> {
-        log_info!("Player is spwaning");
-
+    pub fn new(initial_view: &Vec<Vec<String>>) -> Map {
+        let view_size = initial_view.len();
+        let center = (
+            view_size as isize / 2,
+            if view_size > 0 {
+                initial_view[0].len() as isize / 2
+            } else {
+                0
+            },
+        );
+        log_info!("Player is spawning");
         let map = Map {
-            position: (1, 1),
-            grid: vec![],
+            position: center,
+            grid: initial_view.clone(),
+        };
+        log_info!("Player has spawned");
+        return map;
+    }
+
+    pub fn merge_radar_view(&mut self, new_view: &Vec<Vec<String>>, direction: Direction) {
+        if self.grid.is_empty() {
+            self.grid = new_view.clone();
+            self.position = (new_view.len() as isize / 2, new_view[0].len() as isize / 2);
+            return;
+        }
+
+        let (dr, dc) = match direction {
+            Direction::North => (-2, 0),
+            Direction::South => (2, 0),
+            Direction::East => (0, 2),
+            Direction::West => (0, -2),
         };
 
-        log_info!("Player has spawned");
+        let new_position = (self.position.0 + dr, self.position.1 + dc);
 
-        return Ok(map);
+        self.grid = Map::merge_radar_view_to_map_grid(&self.grid, new_view, new_position);
+        self.position = new_position;
     }
 
     fn merge_radar_view_to_map_grid(
         saved: &Vec<Vec<String>>,
         new_view: &Vec<Vec<String>>,
-        merge_center: (usize, usize),
+        merge_center: (isize, isize),
     ) -> Vec<Vec<String>> {
         let view_size: usize = new_view.len();
         let half: usize = view_size / 2;
 
-        let new_top: isize = merge_center.0 as isize - half as isize;
-        let new_left: isize = merge_center.1 as isize - half as isize;
+        let new_top: isize = merge_center.0 - half as isize;
+        let new_left: isize = merge_center.1 - half as isize;
         let new_bottom: isize = new_top + view_size as isize - 1;
         let new_right: isize = new_left + view_size as isize - 1;
 
@@ -45,14 +79,14 @@ impl Map {
         let overall_right: isize = (saved_cols - 1).max(new_right);
 
         let new_rows = (overall_bottom - overall_top + 1) as usize;
-        let new_cols: usize = (overall_right - overall_left + 1) as usize;
+        let new_cols = (overall_right - overall_left + 1) as usize;
 
         let mut merged: Vec<Vec<String>> = vec![vec![String::from("#"); new_cols]; new_rows];
 
         let offset_row: isize = -overall_top;
         let offset_col: isize = -overall_left;
-        for i in 0..saved_rows as usize {
-            for j in 0..saved_cols as usize {
+        for i in 0..(saved_rows as usize) {
+            for j in 0..(saved_cols as usize) {
                 merged[i + offset_row as usize][j + offset_col as usize] = saved[i][j].clone();
             }
         }
@@ -83,11 +117,10 @@ impl Map {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use shared::utils::{print_string_matrix, string_to_strings};
 
     #[test]
-    fn test_merge_radar_views() {
+    fn test_merge_radar_views_with_directions() {
         let radar_1: Vec<Vec<String>> = vec![
             string_to_strings("#######"),
             string_to_strings("#######"),
@@ -144,17 +177,17 @@ mod tests {
             string_to_strings("###########"),
         ];
 
-        let mut saved: Vec<Vec<String>> = radar_1;
-        print_string_matrix("saved 1", &saved);
-        saved = Map::merge_radar_view_to_map_grid(&saved, &radar_2, (3, 5));
-        print_string_matrix("saved 2", &saved);
-        saved = Map::merge_radar_view_to_map_grid(&saved, &radar_3, (3, 7));
-        print_string_matrix("saved 3", &saved);
-        saved = Map::merge_radar_view_to_map_grid(&saved, &radar_4, (5, 7));
-        print_string_matrix("saved 4", &saved);
+        let mut map = Map::new(&radar_1);
+        print_string_matrix("saved after radar 1", &map.grid);
+        map.merge_radar_view(&radar_2, Direction::East);
+        print_string_matrix("saved after radar 2", &map.grid);
+        map.merge_radar_view(&radar_3, Direction::East);
+        print_string_matrix("saved after radar 3", &map.grid);
+        map.merge_radar_view(&radar_4, Direction::South);
+        print_string_matrix("saved after radar 4", &map.grid);
 
-        print_string_matrix("expected radar 1 + radar 2 + radar 3 + radar 4", &expected);
+        print_string_matrix("expected final grid", &expected);
 
-        assert_eq!(saved, expected);
+        assert_eq!(map.grid, expected);
     }
 }
