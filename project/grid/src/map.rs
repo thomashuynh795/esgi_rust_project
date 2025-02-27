@@ -143,9 +143,9 @@ mod tests {
             string_to_strings("#######"),
             string_to_strings("•-•-•-•"),
             string_to_strings("   P   "),
-            string_to_strings("  •-• •"),
-            string_to_strings("  ###  "),
-            string_to_strings("  ###-•"),
+            string_to_strings("• •-• •"),
+            string_to_strings("| ###  "),
+            string_to_strings("• ###-•"),
         ];
         print_string_matrix("radar view 2", &radar_2);
         map.merge_radar_view(&radar_2, Direction::West);
@@ -238,7 +238,7 @@ mod tests {
             string_to_strings("•-•-•-•"),
         ];
         print_string_matrix("radar view 8", &radar_8);
-        map.merge_radar_view(&radar_8, Direction::North);
+        map.merge_radar_view(&radar_8, Direction::South);
         print_string_matrix("map + radar view 8", &map.grid);
         assert_eq!(map.position, (5, 7));
 

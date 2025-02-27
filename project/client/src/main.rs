@@ -58,13 +58,7 @@ fn main() -> io::Result<()> {
             }
         };
 
-        let player_map: Map = match Map::new(&encoded_radar) {
-            Ok(m) => m,
-            Err(e) => {
-                log_error!("Failed to initialize map for {}: {}", player_name, e);
-                return Err(io::Error::new(io::ErrorKind::Other, e));
-            }
-        };
+        let player_map: Map = match Map::new(&encoded_radar);
 
         player_maps.insert(addr, (stream.clone(), player_map));
 
