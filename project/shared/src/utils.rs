@@ -1,10 +1,7 @@
 use crate::{
     log_debug, log_error, log_info, log_warning,
-    types::{
-        log,
-        message::{
-            GameMessage, RegisterTeam, RegisterTeamResult, SubscribePlayer, SubscribePlayerResult,
-        },
+    types::message::{
+        GameMessage, RegisterTeam, RegisterTeamResult, SubscribePlayer, SubscribePlayerResult,
     },
 };
 use std::io::{self};

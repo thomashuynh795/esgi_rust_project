@@ -2,8 +2,9 @@
 extern crate shared;
 
 use grid::map::Map;
-use shared::utils::print_string_matrix;
-use shared::utils::{connect_to_server, register_player, register_team};
+use grid::radar::RadarView;
+use shared::types::cardinal_direction::CardinalDirection;
+use shared::utils::{connect_to_server, print_string_matrix, register_player, register_team};
 use std::collections::HashMap;
 use std::env;
 use std::io;
@@ -29,7 +30,7 @@ fn main() -> io::Result<()> {
     let mut player_maps: HashMap<SocketAddr, (Arc<Mutex<TcpStream>>, Map)> = HashMap::new();
 
     for i in 0..PLAYERS_NUMBER {
-        let stream = match connect_to_server(server_address) {
+        let stream: Arc<Mutex<TcpStream>> = match connect_to_server(server_address) {
             Ok(s) => Arc::new(Mutex::new(s)),
             Err(e) => {
                 log_error!("Failed to connect player {}: {}", i + 1, e);
@@ -37,7 +38,7 @@ fn main() -> io::Result<()> {
             }
         };
 
-        let addr = match stream.lock().unwrap().peer_addr() {
+        let addr: SocketAddr = match stream.lock().unwrap().peer_addr() {
             Ok(a) => a,
             Err(e) => {
                 log_error!("Failed to get peer address for player {}: {}", i + 1, e);
@@ -45,8 +46,8 @@ fn main() -> io::Result<()> {
             }
         };
 
-        let player_name = format!("Player {}", i + 1);
-        let encoded_radar = match register_player(
+        let player_name: String = format!("Player {}", i + 1);
+        let encoded_radar: String = match register_player(
             &mut stream.lock().unwrap(),
             &registration_token,
             &player_name,
@@ -58,13 +59,14 @@ fn main() -> io::Result<()> {
             }
         };
 
-        let player_map: Map = match Map::new(&encoded_radar);
+        let radar_view: RadarView = RadarView::new(encoded_radar, CardinalDirection::North);
+        let player_map: Map = Map::new(&radar_view.grid);
 
         player_maps.insert(addr, (stream.clone(), player_map));
 
         if let Some((_, map)) = player_maps.get(&addr) {
             let matrix_name: String = format!("{}'s map", player_name);
-            print_string_matrix(&matrix_name, &map.matrix);
+            print_string_matrix(&matrix_name, &map.grid);
         }
     }
 

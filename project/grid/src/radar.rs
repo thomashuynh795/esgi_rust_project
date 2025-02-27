@@ -1,26 +1,11 @@
-use shared::{log_debug, log_error, utils::decode_base64};
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct RadarItem {
-    pub is_hint: bool,
-    pub is_goal: bool,
-    pub entity: Option<Entity>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Entity {
-    Ally,
-    Enemy,
-    Monster,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Orientation {
-    North,
-    East,
-    South,
-    West,
-}
+use shared::{
+    log_debug, log_error,
+    types::{
+        cardinal_direction::CardinalDirection,
+        radar::{Entity, RadarItem},
+    },
+    utils::decode_base64,
+};
 
 pub struct RadarView {
     pub encoded_view: String,
@@ -29,11 +14,11 @@ pub struct RadarView {
     pub vertical_walls: Vec<Vec<Option<bool>>>,
     pub radar_items: Vec<Vec<Option<RadarItem>>>,
     pub grid: Vec<Vec<String>>,
-    pub orientation: Orientation,
+    pub cardinal_direction: CardinalDirection,
 }
 
 impl RadarView {
-    pub fn new(encoded_view: String, orientation: Orientation) -> RadarView {
+    pub fn new(encoded_view: String, cardinal_direction: CardinalDirection) -> RadarView {
         let mut radar_view: RadarView = RadarView {
             encoded_view,
             decoded_view: vec![],
@@ -41,7 +26,7 @@ impl RadarView {
             vertical_walls: vec![],
             radar_items: vec![],
             grid: vec![],
-            orientation,
+            cardinal_direction,
         };
 
         radar_view.print_encoded_view();
@@ -417,15 +402,17 @@ impl RadarView {
     }
 
     fn rotate_radar_view(&mut self) -> () {
-        self.grid = match self.orientation {
-            Orientation::North => self.grid.clone(),
-            Orientation::East => RadarView::rotate_90_clockwise(&RadarView::rotate_90_clockwise(
-                &RadarView::rotate_90_clockwise(&self.grid.clone()),
-            )),
-            Orientation::South => {
+        self.grid = match self.cardinal_direction {
+            CardinalDirection::North => self.grid.clone(),
+            CardinalDirection::East => {
+                RadarView::rotate_90_clockwise(&RadarView::rotate_90_clockwise(
+                    &RadarView::rotate_90_clockwise(&self.grid.clone()),
+                ))
+            }
+            CardinalDirection::South => {
                 RadarView::rotate_90_clockwise(&RadarView::rotate_90_clockwise(&self.grid.clone()))
             }
-            Orientation::West => RadarView::rotate_90_clockwise(&self.grid.clone()),
+            CardinalDirection::West => RadarView::rotate_90_clockwise(&self.grid.clone()),
         };
     }
 
@@ -660,7 +647,7 @@ mod tests {
     #[test]
     fn test_new() {
         let radar_view_1: RadarView =
-            RadarView::new(String::from("ieysGjGO8papd/a"), Orientation::North);
+            RadarView::new(String::from("ieysGjGO8papd/a"), CardinalDirection::North);
         print_string_matrix("radar_view_1", &radar_view_1.grid);
         let expected_1: Vec<Vec<String>> = vec![
             string_to_strings("##• •##"),
@@ -676,7 +663,7 @@ mod tests {
         assert_eq!(radar_view_1.grid, expected_1);
 
         let radar_view_2: RadarView =
-            RadarView::new(String::from("zAeaMsua//8aaaa"), Orientation::North);
+            RadarView::new(String::from("zAeaMsua//8aaaa"), CardinalDirection::North);
         print_string_matrix("radar_view_2", &radar_view_2.grid);
         let expected_2: Vec<Vec<String>> = vec![
             string_to_strings("#######"),
@@ -692,7 +679,7 @@ mod tests {
         assert_eq!(radar_view_2.grid, expected_2);
 
         let radar_view_3: RadarView =
-            RadarView::new(String::from("kevQAjIvaaapapa"), Orientation::North);
+            RadarView::new(String::from("kevQAjIvaaapapa"), CardinalDirection::North);
         print_string_matrix("radar_view_3", &radar_view_3.grid);
         let expected_3: Vec<Vec<String>> = vec![
             string_to_strings("• •-•-•"),
@@ -711,7 +698,7 @@ mod tests {
     #[test]
     fn test_build_matrix() {
         let radar_view: RadarView =
-            RadarView::new(String::from("geguwcHwaa8papa"), Orientation::North);
+            RadarView::new(String::from("geguwcHwaa8papa"), CardinalDirection::North);
 
         radar_view.print_grid();
         log_debug!("Expected radar view:");
@@ -878,7 +865,7 @@ mod tests {
                     String::from("49"),
                 ],
             ],
-            orientation: Orientation::North,
+            cardinal_direction: CardinalDirection::North,
         };
 
         let expected: Vec<Vec<String>> = vec![
@@ -1026,7 +1013,7 @@ mod tests {
                     String::from("7"),
                 ],
             ],
-            orientation: Orientation::East,
+            cardinal_direction: CardinalDirection::East,
         };
 
         radar_view.rotate_radar_view();
