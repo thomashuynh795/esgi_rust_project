@@ -1,7 +1,10 @@
 use crate::{
     log_debug, log_error, log_info, log_warning,
-    types::message::{
-        GameMessage, RegisterTeam, RegisterTeamResult, SubscribePlayer, SubscribePlayerResult,
+    types::{
+        log,
+        message::{
+            GameMessage, RegisterTeam, RegisterTeamResult, SubscribePlayer, SubscribePlayerResult,
+        },
     },
 };
 use std::io::{self};
@@ -264,4 +267,16 @@ pub fn register_player(
             return Err(error);
         }
     }
+}
+
+pub fn string_to_strings(input: &str) -> Vec<String> {
+    return input.chars().map(|c: char| String::from(c)).collect();
+}
+
+pub fn print_string_matrix(matrix_name: &str, matrix: &Vec<Vec<String>>) {
+    log_debug!("{}:", matrix_name);
+    for row in matrix {
+        log_debug!("{}", row.join(""));
+    }
+    log_debug!("==============================");
 }

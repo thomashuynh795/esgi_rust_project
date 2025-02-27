@@ -1,16 +1,5 @@
 use shared::{log_debug, log_error, utils::decode_base64};
 
-/*
-Radar View:
-•-•-•-•
-| | | |
-•-•-•-•
-| |P| |
-•-•-•-•
-| | | |
-•-•-•-•
-*/
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RadarItem {
     pub is_hint: bool,
@@ -406,7 +395,7 @@ impl RadarView {
         self.radar_items = RadarView::convert_cells_items_to_matrix(
             cell_bits
                 .iter()
-                .map(|bits: &String| RadarView::get_radar_item_from_bits(bits)) // No Some()
+                .map(|bits: &String| RadarView::get_radar_item_from_bits(bits))
                 .collect(),
         );
 
@@ -469,6 +458,24 @@ impl RadarView {
     ) -> Vec<Vec<Option<RadarItem>>> {
         cells_items.chunks(3).map(|chunk| chunk.to_vec()).collect()
     }
+
+    // fn convert_grid_to_map(&self) -> Vec<Vec<char>> {
+    //     let mut map: Vec<Vec<char>> = vec![vec![' '; 7]; 7];
+    //     for i in 0..7 {
+    //         for j in 0..7 {
+    //             match self.grid[i][j].chars().next() {
+    //                 Some(first_char) => {
+    //                     if first_char == '|' || first_char == '-' || first_char == '•' {
+    //                         map[i][j] = '1';
+    //                     }
+    //                     map[i][j] = first_char;
+    //                 }
+    //                 None => map[i][j] = '?',
+    //             }
+    //         }
+    //     }
+    //     return map;
+    // }
 
     /*=============================================================*\
         PRINTERS
@@ -646,89 +653,58 @@ impl RadarView {
 mod tests {
     use std::vec;
 
+    use shared::utils::{print_string_matrix, string_to_strings};
+
     use super::*;
 
     #[test]
     fn test_new() {
         let radar_view_1: RadarView =
             RadarView::new(String::from("ieysGjGO8papd/a"), Orientation::North);
-        radar_view_1.print_grid();
-        /*
-        ##• •##
-        ##| |##
-        •-• •##
-        |   |##
-        • •-•##
-        | #####
-        •-•####
-        */
-        let expected_1: Vec<Vec<&str>> = vec![
-            vec!["#", "#", "•", " ", "•", "#", "#"],
-            vec!["#", "#", "|", " ", "|", "#", "#"],
-            vec!["•", "-", "•", " ", "•", "#", "#"],
-            vec!["|", " ", " ", " ", "|", "#", "#"],
-            vec!["•", " ", "•", "-", "•", "#", "#"],
-            vec!["|", " ", "#", "#", "#", "#", "#"],
-            vec!["•", "-", "#", "#", "#", "#", "#"],
+        print_string_matrix("radar_view_1", &radar_view_1.grid);
+        let expected_1: Vec<Vec<String>> = vec![
+            string_to_strings("##• •##"),
+            string_to_strings("##| |##"),
+            string_to_strings("•-• •##"),
+            string_to_strings("|   |##"),
+            string_to_strings("• •-•##"),
+            string_to_strings("| #####"),
+            string_to_strings("•-#####"),
         ];
         log_debug!("Expected walls 1:");
-        for row in &expected_1 {
-            log_debug!("{}", row.join(" "));
-        }
+        print_string_matrix("expected_1", &expected_1);
         assert_eq!(radar_view_1.grid, expected_1);
 
         let radar_view_2: RadarView =
             RadarView::new(String::from("zAeaMsua//8aaaa"), Orientation::North);
-        radar_view_2.print_grid();
-        /*
-        #######
-        #######
-        ##•-•-•
-        ##|
-        ##• •
-        |   |
-        •-• •
-        */
-        let expected_2: Vec<Vec<&str>> = vec![
-            vec!["#", "#", "#", "#", "#", "#", "#"],
-            vec!["#", "#", "#", "#", "#", "#", "#"],
-            vec!["#", "#", "•", "-", "•", "-", "•"],
-            vec!["#", "#", "|", " ", " ", " ", " "],
-            vec!["#", "#", "•", " ", "•", " ", " "],
-            vec!["|", " ", " ", " ", "|", " ", " "],
-            vec!["•", "-", "•", " ", "•", " ", " "],
+        print_string_matrix("radar_view_2", &radar_view_2.grid);
+        let expected_2: Vec<Vec<String>> = vec![
+            string_to_strings("#######"),
+            string_to_strings("#######"),
+            string_to_strings("##•-•-•"),
+            string_to_strings("##|    "),
+            string_to_strings("##• •  "),
+            string_to_strings("|   |  "),
+            string_to_strings("•-• •  "),
         ];
         log_debug!("Expected walls 2:");
-        for row in &expected_2 {
-            log_debug!("{}", row.join(" "));
-        }
+        print_string_matrix("expected_2", &expected_2);
         assert_eq!(radar_view_2.grid, expected_2);
 
         let radar_view_3: RadarView =
             RadarView::new(String::from("kevQAjIvaaapapa"), Orientation::North);
-        radar_view_3.print_grid();
-        /*
-        • •-•-•
-        |
-        •-• •##
-        |   |##
-        • • •##
-          | |##
-        •-•-•##
-        */
-        let expected_3: Vec<Vec<&str>> = vec![
-            vec!["•", " ", "•", "-", "•", "-", "•"],
-            vec!["|", " ", " ", " ", " ", " ", " "],
-            vec!["•", "-", "•", " ", "•", "#", "#"],
-            vec!["|", " ", " ", " ", "|", "#", "#"],
-            vec!["•", " ", "•", " ", "•", "#", "#"],
-            vec![" ", " ", "|", " ", "|", "#", "#"],
-            vec!["•", "-", "•", "-", "•", "#", "#"],
+        print_string_matrix("radar_view_3", &radar_view_3.grid);
+        let expected_3: Vec<Vec<String>> = vec![
+            string_to_strings("• •-•-•"),
+            string_to_strings("|      "),
+            string_to_strings("•-• •##"),
+            string_to_strings("|   |##"),
+            string_to_strings("• • •##"),
+            string_to_strings("  | |##"),
+            string_to_strings("•-•-•##"),
         ];
         log_debug!("Expected walls 3:");
-        for row in &expected_3 {
-            log_debug!("{}", row.join(" "));
-        }
+        print_string_matrix("expected_3", &expected_3);
         assert_eq!(radar_view_3.grid, expected_3);
     }
 

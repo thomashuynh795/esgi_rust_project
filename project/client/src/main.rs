@@ -2,6 +2,7 @@
 extern crate shared;
 
 use grid::map::Map;
+use shared::utils::print_string_matrix;
 use shared::utils::{connect_to_server, register_player, register_team};
 use std::collections::HashMap;
 use std::env;
@@ -57,7 +58,7 @@ fn main() -> io::Result<()> {
             }
         };
 
-        let player_map = match Map::new(&encoded_radar) {
+        let player_map: Map = match Map::new(&encoded_radar) {
             Ok(m) => m,
             Err(e) => {
                 log_error!("Failed to initialize map for {}: {}", player_name, e);
@@ -68,8 +69,8 @@ fn main() -> io::Result<()> {
         player_maps.insert(addr, (stream.clone(), player_map));
 
         if let Some((_, map)) = player_maps.get(&addr) {
-            println!("Map of {}:", player_name);
-            map.print();
+            let matrix_name: String = format!("{}'s map", player_name);
+            print_string_matrix(&matrix_name, &map.matrix);
         }
     }
 
