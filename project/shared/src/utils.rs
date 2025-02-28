@@ -90,30 +90,6 @@ pub fn decode_base64(input: &str) -> Result<Vec<u8>, String> {
     return Ok(decoded_bytes);
 }
 
-#[cfg(test)]
-mod tests {
-    use super::decode_base64;
-
-    #[test]
-    fn test_base64_decode_valid() {
-        let encoded: &str = "ieysGjGO8papd/a";
-        let decoded: Vec<u8> = decode_base64(encoded).expect("Failed to decode Base64.");
-        let expected = vec![
-            0b00100000, 0b01000110, 0b00010010, 0b10000000, 0b10011000, 0b00101000, 0b11110000,
-            0b11110000, 0b00001111, 0b00001111, 0b11110000,
-        ];
-        assert_eq!(decoded, expected);
-    }
-
-    #[test]
-    fn test_base64_invalid_chars() {
-        let encoded1: &str = "abc!";
-        let encoded2: &str = "abc*";
-        assert!(decode_base64(encoded1).is_err());
-        assert!(decode_base64(encoded2).is_err());
-    }
-}
-
 /// Connects to the server and returns the TCP stream.
 ///
 /// # Arguments
@@ -160,19 +136,13 @@ pub fn register_team(stream: &mut TcpStream) -> io::Result<String> {
     };
     let message = GameMessage::RegisterTeam(register_team);
     message.send(stream)?;
-    log_info!("Registration message sent to the server");
 
     match GameMessage::receive(stream)? {
         GameMessage::RegisterTeamResult(RegisterTeamResult::Ok {
             expected_players,
             registration_token,
         }) => {
-            log_info!(
-                "Team registered. Waiting for players: {}. Registering token: {}",
-                expected_players,
-                registration_token
-            );
-            Ok(registration_token)
+            return Ok(registration_token);
         }
         GameMessage::RegisterTeamResult(RegisterTeamResult::Err(e)) => {
             log_error!("Registration failed: {:?}", e);
@@ -214,16 +184,11 @@ pub fn register_player(
 
     let message: GameMessage = GameMessage::SubscribePlayer(subscribe_player);
     message.send(stream)?;
-    log_info!("SubscribePlayer message sent");
 
     match GameMessage::receive(stream)? {
         GameMessage::SubscribePlayerResult(SubscribePlayerResult::Ok) => {
-            log_info!("Player successfully registered. Waiting for first RadarView...");
-
             match GameMessage::receive(stream) {
                 Ok(GameMessage::RadarView(encoded_radar)) => {
-                    log_info!("First RadarView received: {}", encoded_radar);
-
                     return Ok(encoded_radar);
                 }
                 Ok(other_message) => {
@@ -276,4 +241,28 @@ pub fn print_string_matrix(matrix_name: &str, matrix: &Vec<Vec<String>>) {
         log_debug!("{}", row.join(""));
     }
     log_debug!("==============================");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::decode_base64;
+
+    #[test]
+    fn test_base64_decode_valid() {
+        let encoded: &str = "ieysGjGO8papd/a";
+        let decoded: Vec<u8> = decode_base64(encoded).expect("Failed to decode Base64.");
+        let expected = vec![
+            0b00100000, 0b01000110, 0b00010010, 0b10000000, 0b10011000, 0b00101000, 0b11110000,
+            0b11110000, 0b00001111, 0b00001111, 0b11110000,
+        ];
+        assert_eq!(decoded, expected);
+    }
+
+    #[test]
+    fn test_base64_invalid_chars() {
+        let encoded1: &str = "abc!";
+        let encoded2: &str = "abc*";
+        assert!(decode_base64(encoded1).is_err());
+        assert!(decode_base64(encoded2).is_err());
+    }
 }

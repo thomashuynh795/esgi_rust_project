@@ -2,7 +2,7 @@ use shared::{
     log_debug, log_error,
     types::{
         cardinal_direction::CardinalDirection,
-        radar::{Entity, RadarItem},
+        radar_item::{Entity, RadarItem},
     },
     utils::decode_base64,
 };
@@ -29,7 +29,6 @@ impl RadarView {
             cardinal_direction,
         };
 
-        radar_view.print_encoded_view();
         radar_view.decode_view();
         radar_view.extract_data();
         radar_view.merge_walls();
@@ -89,21 +88,8 @@ impl RadarView {
 
         for i in 0..7 {
             for j in 0..7 {
-                if self.grid[i][j] == "|" {
-                    if i > 0 {
-                        self.grid[i - 1][j] = "•".to_string();
-                    }
-                    if i < 6 {
-                        self.grid[i + 1][j] = "•".to_string();
-                    }
-                }
-                if self.grid[i][j] == "-" {
-                    if j > 0 {
-                        self.grid[i][j - 1] = "•".to_string();
-                    }
-                    if j < 6 {
-                        self.grid[i][j + 1] = "•".to_string();
-                    }
+                if i % 2 == 0 && j % 2 == 0 {
+                    self.grid[i][j] = String::from("•");
                 }
             }
         }
@@ -344,38 +330,22 @@ impl RadarView {
             );
         }
         self.decoded_view = decoded;
-        self.print_decoded_view();
     }
 
     fn extract_data(&mut self) {
         let h_walls_data: &[u8] = &self.decoded_view[0..3];
-        log_debug!("Horizontal walls data bytes:");
-        for byte in h_walls_data {
-            log_debug!("{:08b}", byte);
-        }
-        log_debug!("==============================");
         let h_walls_bits: String = RadarView::convert_walls_bytes_to_string(h_walls_data);
         self.horizontal_walls = RadarView::convert_horizontal_walls_to_matrix(
             RadarView::extract_walls_data_from_bits_string(&h_walls_bits),
         );
 
         let v_walls_data: &[u8] = &self.decoded_view[3..6];
-        log_debug!("Vertical walls data bytes:");
-        for byte in v_walls_data {
-            log_debug!("{:08b}", byte);
-        }
-        log_debug!("==============================");
         let v_walls_bits: String = RadarView::convert_walls_bytes_to_string(v_walls_data);
         self.vertical_walls = RadarView::convert_vertical_walls_to_matrix(
             RadarView::extract_walls_data_from_bits_string(&v_walls_bits),
         );
 
         let cell_data: &[u8] = &self.decoded_view[6..11];
-        log_debug!("Cell data bytes:");
-        for byte in cell_data {
-            log_debug!("{:08b}", byte);
-        }
-        log_debug!("==============================");
         let cell_bits: Vec<String> = RadarView::extract_cells_data(cell_data);
         self.radar_items = RadarView::convert_cells_items_to_matrix(
             cell_bits
@@ -383,10 +353,6 @@ impl RadarView {
                 .map(|bits: &String| RadarView::get_radar_item_from_bits(bits))
                 .collect(),
         );
-
-        self.print_horizontal_walls();
-        self.print_vertical_walls();
-        self.print_cells_items();
     }
 
     fn convert_walls_bytes_to_string(data: &[u8]) -> String {
@@ -445,24 +411,6 @@ impl RadarView {
     ) -> Vec<Vec<Option<RadarItem>>> {
         cells_items.chunks(3).map(|chunk| chunk.to_vec()).collect()
     }
-
-    // fn convert_grid_to_map(&self) -> Vec<Vec<char>> {
-    //     let mut map: Vec<Vec<char>> = vec![vec![' '; 7]; 7];
-    //     for i in 0..7 {
-    //         for j in 0..7 {
-    //             match self.grid[i][j].chars().next() {
-    //                 Some(first_char) => {
-    //                     if first_char == '|' || first_char == '-' || first_char == '•' {
-    //                         map[i][j] = '1';
-    //                     }
-    //                     map[i][j] = first_char;
-    //                 }
-    //                 None => map[i][j] = '?',
-    //             }
-    //         }
-    //     }
-    //     return map;
-    // }
 
     /*=============================================================*\
         PRINTERS
@@ -548,17 +496,6 @@ impl RadarView {
             return vec![];
         }
 
-        log_debug!(
-            "Byte of cell data (input) : {:0b} {:0b} {:0b} {:0b} {:0b}",
-            bytes[0],
-            bytes[1],
-            bytes[2],
-            bytes[3],
-            bytes[4]
-        );
-
-        log_debug!("==============================");
-
         let raw_40_bits: u64 = ((bytes[0] as u64) << 32)
             | ((bytes[1] as u64) << 24)
             | ((bytes[2] as u64) << 16)
@@ -620,11 +557,24 @@ impl RadarView {
     }
 
     fn rotate_90_clockwise(matrix: &Vec<Vec<String>>) -> Vec<Vec<String>> {
-        let n: usize = matrix.len();
-        let mut rotated: Vec<Vec<String>> = vec![vec![String::from("#"); n]; n];
-        for row in 0..n {
-            for column in 0..n {
-                rotated[column][n - 1 - row] = matrix[row][column].clone();
+        let rows: usize = matrix.len();
+        if rows == 0 {
+            return vec![];
+        }
+        let cols: usize = matrix[0].len();
+
+        let mut rotated: Vec<Vec<String>> = vec![vec![String::from("#"); rows]; cols];
+
+        for row in 0..rows {
+            for col in 0..cols {
+                let new_row: usize = col;
+                let new_col: usize = rows - 1 - row;
+
+                rotated[new_row][new_col] = match matrix[row][col].as_str() {
+                    "-" => "|".to_owned(),
+                    "|" => "-".to_owned(),
+                    other => other.to_string(),
+                };
             }
         }
 
@@ -638,11 +588,9 @@ impl RadarView {
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
-    use shared::utils::{print_string_matrix, string_to_strings};
-
     use super::*;
+    use shared::utils::{print_string_matrix, string_to_strings};
+    use std::vec;
 
     #[test]
     fn test_new() {
@@ -801,137 +749,25 @@ mod tests {
             vertical_walls: vec![],
             radar_items: vec![],
             grid: vec![
-                vec![
-                    String::from("1"),
-                    String::from("2"),
-                    String::from("3"),
-                    String::from("4"),
-                    String::from("5"),
-                    String::from("6"),
-                    String::from("7"),
-                ],
-                vec![
-                    String::from("8"),
-                    String::from("9"),
-                    String::from("10"),
-                    String::from("11"),
-                    String::from("12"),
-                    String::from("13"),
-                    String::from("14"),
-                ],
-                vec![
-                    String::from("15"),
-                    String::from("16"),
-                    String::from("17"),
-                    String::from("18"),
-                    String::from("19"),
-                    String::from("20"),
-                    String::from("21"),
-                ],
-                vec![
-                    String::from("22"),
-                    String::from("23"),
-                    String::from("24"),
-                    String::from("25"),
-                    String::from("26"),
-                    String::from("27"),
-                    String::from("28"),
-                ],
-                vec![
-                    String::from("29"),
-                    String::from("30"),
-                    String::from("31"),
-                    String::from("32"),
-                    String::from("33"),
-                    String::from("34"),
-                    String::from("35"),
-                ],
-                vec![
-                    String::from("36"),
-                    String::from("37"),
-                    String::from("38"),
-                    String::from("39"),
-                    String::from("40"),
-                    String::from("41"),
-                    String::from("42"),
-                ],
-                vec![
-                    String::from("43"),
-                    String::from("44"),
-                    String::from("45"),
-                    String::from("46"),
-                    String::from("47"),
-                    String::from("48"),
-                    String::from("49"),
-                ],
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|1|2|3|"),
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|4|5|6|"),
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|7|8|9|"),
+                string_to_strings("•-•-•-•"),
             ],
             cardinal_direction: CardinalDirection::North,
         };
 
         let expected: Vec<Vec<String>> = vec![
-            vec![
-                String::from("43"),
-                String::from("36"),
-                String::from("29"),
-                String::from("22"),
-                String::from("15"),
-                String::from("8"),
-                String::from("1"),
-            ],
-            vec![
-                String::from("44"),
-                String::from("37"),
-                String::from("30"),
-                String::from("23"),
-                String::from("16"),
-                String::from("9"),
-                String::from("2"),
-            ],
-            vec![
-                String::from("45"),
-                String::from("38"),
-                String::from("31"),
-                String::from("24"),
-                String::from("17"),
-                String::from("10"),
-                String::from("3"),
-            ],
-            vec![
-                String::from("46"),
-                String::from("39"),
-                String::from("32"),
-                String::from("25"),
-                String::from("18"),
-                String::from("11"),
-                String::from("4"),
-            ],
-            vec![
-                String::from("47"),
-                String::from("40"),
-                String::from("33"),
-                String::from("26"),
-                String::from("19"),
-                String::from("12"),
-                String::from("5"),
-            ],
-            vec![
-                String::from("48"),
-                String::from("41"),
-                String::from("34"),
-                String::from("27"),
-                String::from("20"),
-                String::from("13"),
-                String::from("6"),
-            ],
-            vec![
-                String::from("49"),
-                String::from("42"),
-                String::from("35"),
-                String::from("28"),
-                String::from("21"),
-                String::from("14"),
-                String::from("7"),
-            ],
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|7|4|1|"),
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|8|5|2|"),
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|9|6|3|"),
+            string_to_strings("•-•-•-•"),
         ];
 
         assert_eq!(
@@ -942,148 +778,95 @@ mod tests {
 
     #[test]
     fn test_rotate_radar_view() {
-        let mut radar_view: RadarView = RadarView {
-            encoded_view: String::from("ieysGjGO8papd/a"),
+        let mut radar_view_north_oriented: RadarView = RadarView {
+            encoded_view: String::from(""),
             decoded_view: vec![],
             horizontal_walls: vec![],
             vertical_walls: vec![],
             radar_items: vec![],
             grid: vec![
-                vec![
-                    String::from("43"),
-                    String::from("36"),
-                    String::from("29"),
-                    String::from("22"),
-                    String::from("15"),
-                    String::from("8"),
-                    String::from("1"),
-                ],
-                vec![
-                    String::from("44"),
-                    String::from("37"),
-                    String::from("30"),
-                    String::from("23"),
-                    String::from("16"),
-                    String::from("9"),
-                    String::from("2"),
-                ],
-                vec![
-                    String::from("45"),
-                    String::from("38"),
-                    String::from("31"),
-                    String::from("24"),
-                    String::from("17"),
-                    String::from("10"),
-                    String::from("3"),
-                ],
-                vec![
-                    String::from("46"),
-                    String::from("39"),
-                    String::from("32"),
-                    String::from("25"),
-                    String::from("18"),
-                    String::from("11"),
-                    String::from("4"),
-                ],
-                vec![
-                    String::from("47"),
-                    String::from("40"),
-                    String::from("33"),
-                    String::from("26"),
-                    String::from("19"),
-                    String::from("12"),
-                    String::from("5"),
-                ],
-                vec![
-                    String::from("48"),
-                    String::from("41"),
-                    String::from("34"),
-                    String::from("27"),
-                    String::from("20"),
-                    String::from("13"),
-                    String::from("6"),
-                ],
-                vec![
-                    String::from("49"),
-                    String::from("42"),
-                    String::from("35"),
-                    String::from("28"),
-                    String::from("21"),
-                    String::from("14"),
-                    String::from("7"),
-                ],
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|1|2|3|"),
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|4|5|6|"),
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|7|8|9|"),
+                string_to_strings("•-•-•-•"),
+            ],
+            cardinal_direction: CardinalDirection::North,
+        };
+        radar_view_north_oriented.rotate_radar_view();
+
+        let mut radar_view_east_oriented: RadarView = RadarView {
+            encoded_view: String::from(""),
+            decoded_view: vec![],
+            horizontal_walls: vec![],
+            vertical_walls: vec![],
+            radar_items: vec![],
+            grid: vec![
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|7|4|1|"),
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|8|5|2|"),
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|9|6|3|"),
+                string_to_strings("•-•-•-•"),
             ],
             cardinal_direction: CardinalDirection::East,
         };
+        radar_view_east_oriented.rotate_radar_view();
 
-        radar_view.rotate_radar_view();
+        let mut radar_view_south_oriented: RadarView = RadarView {
+            encoded_view: String::from(""),
+            decoded_view: vec![],
+            horizontal_walls: vec![],
+            vertical_walls: vec![],
+            radar_items: vec![],
+            grid: vec![
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|9|8|7|"),
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|6|5|4|"),
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|3|2|1|"),
+                string_to_strings("•-•-•-•"),
+            ],
+            cardinal_direction: CardinalDirection::South,
+        };
+        radar_view_south_oriented.rotate_radar_view();
+
+        let mut radar_view_west_oriented: RadarView = RadarView {
+            encoded_view: String::from(""),
+            decoded_view: vec![],
+            horizontal_walls: vec![],
+            vertical_walls: vec![],
+            radar_items: vec![],
+            grid: vec![
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|3|6|9|"),
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|2|5|8|"),
+                string_to_strings("•-•-•-•"),
+                string_to_strings("|1|4|7|"),
+                string_to_strings("•-•-•-•"),
+            ],
+            cardinal_direction: CardinalDirection::West,
+        };
+        radar_view_west_oriented.rotate_radar_view();
 
         let expected_grid: Vec<Vec<String>> = vec![
-            vec![
-                String::from("1"),
-                String::from("2"),
-                String::from("3"),
-                String::from("4"),
-                String::from("5"),
-                String::from("6"),
-                String::from("7"),
-            ],
-            vec![
-                String::from("8"),
-                String::from("9"),
-                String::from("10"),
-                String::from("11"),
-                String::from("12"),
-                String::from("13"),
-                String::from("14"),
-            ],
-            vec![
-                String::from("15"),
-                String::from("16"),
-                String::from("17"),
-                String::from("18"),
-                String::from("19"),
-                String::from("20"),
-                String::from("21"),
-            ],
-            vec![
-                String::from("22"),
-                String::from("23"),
-                String::from("24"),
-                String::from("25"),
-                String::from("26"),
-                String::from("27"),
-                String::from("28"),
-            ],
-            vec![
-                String::from("29"),
-                String::from("30"),
-                String::from("31"),
-                String::from("32"),
-                String::from("33"),
-                String::from("34"),
-                String::from("35"),
-            ],
-            vec![
-                String::from("36"),
-                String::from("37"),
-                String::from("38"),
-                String::from("39"),
-                String::from("40"),
-                String::from("41"),
-                String::from("42"),
-            ],
-            vec![
-                String::from("43"),
-                String::from("44"),
-                String::from("45"),
-                String::from("46"),
-                String::from("47"),
-                String::from("48"),
-                String::from("49"),
-            ],
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|1|2|3|"),
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|4|5|6|"),
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|7|8|9|"),
+            string_to_strings("•-•-•-•"),
         ];
 
-        assert_eq!(expected_grid, radar_view.grid);
+        assert_eq!(radar_view_north_oriented.grid, expected_grid);
+        assert_eq!(radar_view_east_oriented.grid, expected_grid);
+        assert_eq!(radar_view_south_oriented.grid, expected_grid);
+        assert_eq!(radar_view_west_oriented.grid, expected_grid);
     }
 }

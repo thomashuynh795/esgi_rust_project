@@ -2,14 +2,17 @@ use shared::types::action::RelativeDirection;
 use shared::types::cardinal_direction::CardinalDirection;
 
 pub struct Map {
-    pub position: (isize, isize),
+    pub player_position: (isize, isize),
     pub grid: Vec<Vec<String>>,
     pub visits: Vec<Vec<u32>>,
-    pub orientation: CardinalDirection,
+    pub current_cardinal_direction: CardinalDirection,
 }
 
 impl Map {
-    pub fn new(initial_grid: &Vec<Vec<String>>) -> Map {
+    pub fn new(
+        initial_grid: &Vec<Vec<String>>,
+        current_cardinal_direction: CardinalDirection,
+    ) -> Map {
         let grid: Vec<Vec<String>> = initial_grid.clone();
         let view_size: usize = grid.len();
         let center: (isize, isize) = (
@@ -22,14 +25,15 @@ impl Map {
         );
         let visits: Vec<Vec<u32>> = vec![vec![0; grid[0].len()]; grid.len()];
         Map {
-            position: center,
+            player_position: center,
             grid,
             visits,
-            orientation: CardinalDirection::North,
+            current_cardinal_direction,
         }
     }
 
     pub fn merge_radar_view(&mut self, new_view: &Vec<Vec<String>>, direction: CardinalDirection) {
+        self.current_cardinal_direction = direction;
         let (row_offset, column_offset) = match direction {
             CardinalDirection::North => (-2, 0),
             CardinalDirection::South => (2, 0),
@@ -38,14 +42,14 @@ impl Map {
         };
 
         let candidate: (isize, isize) = (
-            self.position.0 + row_offset,
-            self.position.1 + column_offset,
+            self.player_position.0 + row_offset,
+            self.player_position.1 + column_offset,
         );
 
         let (new_grid, effective_position, overall_top, overall_left, new_rows, new_cols) =
             Map::merge_radar_view_to_map_grid(&self.grid, new_view, candidate);
         self.grid = new_grid;
-        self.position = effective_position;
+        self.player_position = effective_position;
 
         self.visits =
             Map::merge_visits(&self.visits, overall_top, overall_left, new_rows, new_cols);
@@ -143,10 +147,10 @@ impl Map {
                     saved[i as usize][j as usize];
             }
         }
-        merged
+        return merged;
     }
 
-    pub fn next_move_tremaux(&mut self) -> Option<RelativeDirection> {
+    pub fn next_move_tremaux(&mut self) -> Option<(RelativeDirection, CardinalDirection)> {
         let moves: [(CardinalDirection, (isize, isize)); 4] = [
             (CardinalDirection::North, (-2, 0)),
             (CardinalDirection::East, (0, 2)),
@@ -154,7 +158,7 @@ impl Map {
             (CardinalDirection::West, (0, -2)),
         ];
 
-        let (player_row, player_column) = self.position;
+        let (player_row, player_column) = self.player_position;
         let mut best: Option<(CardinalDirection, (isize, isize), u32)> = None;
         for (dir, (row_offset, column_offset)) in moves.iter() {
             let new_player_row: isize = player_row + row_offset;
@@ -176,16 +180,18 @@ impl Map {
             }
         }
 
-        if let Some((chosen_dir, (row_offset, column_offset), _)) = best {
+        if let Some((chosen_cardinal_direction, (row_offset, column_offset), _)) = best {
             let new_r: isize = player_row + row_offset;
             let new_c: isize = player_column + column_offset;
-            self.position = (new_r, new_c);
+            self.player_position = (new_r, new_c);
             self.visits[new_r as usize][new_c as usize] += 1;
-            let relative: RelativeDirection =
-                absolute_to_relative_direction(&self.orientation, &chosen_dir);
-            self.orientation = chosen_dir;
+            let relative_direction: RelativeDirection = absolute_to_relative_direction(
+                &self.current_cardinal_direction,
+                &chosen_cardinal_direction,
+            );
+            self.current_cardinal_direction = chosen_cardinal_direction;
 
-            return Some(relative);
+            return Some((relative_direction, chosen_cardinal_direction));
         } else {
             return None;
         }
@@ -222,10 +228,11 @@ fn absolute_to_relative_direction(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::radar::RadarView;
     use shared::utils::{print_string_matrix, string_to_strings};
 
     #[test]
-    fn test_merge_radar_views_with_directions() {
+    fn test_merge_radar_views_with_directions_1() {
         // Spawns.
         let radar_1: Vec<Vec<String>> = vec![
             string_to_strings("#######"),
@@ -238,9 +245,10 @@ mod tests {
         ];
 
         print_string_matrix("radar view 1", &radar_1);
-        let mut map: Map = Map::new(&radar_1);
+        let mut map: Map = Map::new(&radar_1, CardinalDirection::North);
         print_string_matrix("map + radar view 1", &map.grid);
-        assert_eq!(map.position, (3, 3));
+        assert_eq!(map.player_position, (3, 3));
+        assert_eq!(radar_1, map.grid);
 
         // Moves West.
         let radar_2: Vec<Vec<String>> = vec![
@@ -252,10 +260,20 @@ mod tests {
             string_to_strings("| ###  "),
             string_to_strings("• ###-•"),
         ];
+        let expected_grid_2: Vec<Vec<String>> = vec![
+            string_to_strings("#########"),
+            string_to_strings("#########"),
+            string_to_strings("•-•-•-•-•"),
+            string_to_strings("         "),
+            string_to_strings("• •-• •-•"),
+            string_to_strings("| ##|  A "),
+            string_to_strings("• ##•-•-•"),
+        ];
         print_string_matrix("radar view 2", &radar_2);
         map.merge_radar_view(&radar_2, CardinalDirection::West);
         print_string_matrix("map + radar view 2", &map.grid);
-        assert_eq!(map.position, (3, 3));
+        assert_eq!(map.player_position, (3, 3));
+        assert_eq!(map.grid, expected_grid_2);
 
         // Moves East.
         let radar_3: Vec<Vec<String>> = vec![
@@ -270,7 +288,7 @@ mod tests {
         print_string_matrix("radar view 3", &radar_3);
         map.merge_radar_view(&radar_3, CardinalDirection::East);
         print_string_matrix("map + radar view 3", &map.grid);
-        assert_eq!(map.position, (3, 5));
+        assert_eq!(map.player_position, (3, 5));
 
         // Moves East.
         let radar_4: Vec<Vec<String>> = vec![
@@ -285,7 +303,7 @@ mod tests {
         print_string_matrix("radar view 4", &radar_4);
         map.merge_radar_view(&radar_4, CardinalDirection::East);
         print_string_matrix("map + radar view 4", &map.grid);
-        assert_eq!(map.position, (3, 7));
+        assert_eq!(map.player_position, (3, 7));
 
         // Moves South.
         let radar_5: Vec<Vec<String>> = vec![
@@ -300,7 +318,7 @@ mod tests {
         print_string_matrix("radar view 5", &radar_5);
         map.merge_radar_view(&radar_5, CardinalDirection::South);
         print_string_matrix("map + radar view 5", &map.grid);
-        assert_eq!(map.position, (5, 7));
+        assert_eq!(map.player_position, (5, 7));
 
         // Moves North.
         let radar_6: Vec<Vec<String>> = vec![
@@ -315,7 +333,7 @@ mod tests {
         print_string_matrix("radar view 6", &radar_6);
         map.merge_radar_view(&radar_6, CardinalDirection::North);
         print_string_matrix("map + radar view 6", &map.grid);
-        assert_eq!(map.position, (3, 7));
+        assert_eq!(map.player_position, (3, 7));
 
         // Moves North.
         let radar_7: Vec<Vec<String>> = vec![
@@ -330,7 +348,7 @@ mod tests {
         print_string_matrix("radar view 7", &radar_7);
         map.merge_radar_view(&radar_7, CardinalDirection::North);
         print_string_matrix("map + radar view 7", &map.grid);
-        assert_eq!(map.position, (3, 7));
+        assert_eq!(map.player_position, (3, 7));
 
         // Moves South.
         let radar_8: Vec<Vec<String>> = vec![
@@ -345,7 +363,7 @@ mod tests {
         print_string_matrix("radar view 8", &radar_8);
         map.merge_radar_view(&radar_8, CardinalDirection::South);
         print_string_matrix("map + radar view 8", &map.grid);
-        assert_eq!(map.position, (5, 7));
+        assert_eq!(map.player_position, (5, 7));
 
         let expected_final_grid: Vec<Vec<String>> = vec![
             string_to_strings("####•-• •-•"),
@@ -365,6 +383,63 @@ mod tests {
 
         assert_eq!(map.grid, expected_final_grid);
     }
+
+    #[test]
+    fn test_merge_radar_views_with_directions_2() {
+        let radar_view_1: RadarView =
+            RadarView::new(String::from("bKLzjzIMaaap8aa"), CardinalDirection::North);
+
+        let radar_1: Vec<Vec<String>> = vec![
+            string_to_strings("• • •-•"),
+            string_to_strings("| |   |"),
+            string_to_strings("• • •##"),
+            string_to_strings("|   |##"),
+            string_to_strings("•-• •##"),
+            string_to_strings("##|    "),
+            string_to_strings("##• •-•"),
+        ];
+
+        print_string_matrix("radar view 1", radar_view_1.grid.as_ref());
+        let mut map: Map = Map::new(&radar_view_1.grid, CardinalDirection::North);
+        print_string_matrix("map + radar view 1", &map.grid);
+        assert_eq!(map.player_position, (3, 3));
+        assert_eq!(radar_1, radar_view_1.grid);
+
+        let radar_2: Vec<Vec<String>> = vec![
+            string_to_strings("• •-•##"),
+            string_to_strings("|   |##"),
+            string_to_strings("##• •-•"),
+            string_to_strings("##|   |"),
+            string_to_strings("##• • •"),
+            string_to_strings("|   |  "),
+            string_to_strings("•-• • •"),
+        ];
+        let expected_grid_2: Vec<Vec<String>> = vec![
+            string_to_strings("• •-•##"),
+            string_to_strings("|   |##"),
+            string_to_strings("• • •-•"),
+            string_to_strings("| |   |"),
+            string_to_strings("• • • •"),
+            string_to_strings("|   |  "),
+            string_to_strings("•-• • •"),
+            string_to_strings("##|    "),
+            string_to_strings("##• •-•"),
+        ];
+
+        print_string_matrix("radar view 2", &radar_2);
+        let radar_view_2: RadarView =
+            RadarView::new(String::from("zwfGMsAyap8aaaa"), CardinalDirection::North);
+        assert_eq!(&radar_view_2.grid, &radar_2);
+        let map_2: Map = Map::new(&radar_view_2.grid, CardinalDirection::North);
+        assert_eq!(map_2.grid, radar_view_2.grid);
+        map.merge_radar_view(&radar_view_2.grid, CardinalDirection::North);
+        print_string_matrix("map + radar view 2", &map.grid);
+        print_string_matrix("map + radar view 2 expected", &expected_grid_2);
+        assert_eq!(map.player_position, (3, 3));
+        // assert_eq!(map.grid, radar_view_2.grid);
+        assert_eq!(map.grid, expected_grid_2);
+    }
+
     #[test]
     fn test_tremaux_algorithm() {
         let grid: Vec<Vec<String>> = vec![
@@ -374,17 +449,22 @@ mod tests {
             string_to_strings("| | |"),
             string_to_strings("•-•-•"),
         ];
-        let mut map: Map = Map::new(&grid);
-        map.position = (2, 2);
-        map.orientation = CardinalDirection::North;
+        let mut map: Map = Map::new(&grid, CardinalDirection::North);
+        map.player_position = (2, 2);
+        map.current_cardinal_direction = CardinalDirection::North;
 
         assert_eq!(map.next_move_tremaux(), Option::None);
 
         map.grid[2][4] = String::from(" ");
         map.visits[2][4] = 0;
 
-        let relative: Option<RelativeDirection> = map.next_move_tremaux();
-        assert_eq!(relative, Some(RelativeDirection::Right));
-        assert_eq!(map.position, (2, 4));
+        match map.next_move_tremaux() {
+            Some((relative_direction, chosen_cardinal_direction)) => {
+                assert_eq!(relative_direction, RelativeDirection::Right);
+                assert_eq!(chosen_cardinal_direction, CardinalDirection::East);
+                assert_eq!(map.player_position, (2, 4));
+            }
+            None => panic!("Expected a move."),
+        }
     }
 }

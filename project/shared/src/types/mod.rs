@@ -6,4 +6,4 @@ pub mod hint;
 pub mod log;
 pub mod message;
 pub mod orientation;
-pub mod radar;
+pub mod radar_item;
