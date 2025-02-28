@@ -1,55 +1,61 @@
+use shared::types::action::RelativeDirection;
 use shared::types::cardinal_direction::CardinalDirection;
 
 pub struct Map {
     pub position: (isize, isize),
     pub grid: Vec<Vec<String>>,
+    pub visits: Vec<Vec<u32>>,
+    pub orientation: CardinalDirection,
 }
 
 impl Map {
     pub fn new(initial_grid: &Vec<Vec<String>>) -> Map {
-        let view_size: usize = initial_grid.len();
+        let grid: Vec<Vec<String>> = initial_grid.clone();
+        let view_size: usize = grid.len();
         let center: (isize, isize) = (
             view_size as isize / 2,
             if view_size > 0 {
-                initial_grid[0].len() as isize / 2
+                grid[0].len() as isize / 2
             } else {
                 0
             },
         );
-
-        let map: Map = Map {
+        let visits: Vec<Vec<u32>> = vec![vec![0; grid[0].len()]; grid.len()];
+        Map {
             position: center,
-            grid: initial_grid.clone(),
-        };
-
-        return map;
+            grid,
+            visits,
+            orientation: CardinalDirection::North,
+        }
     }
 
-    pub fn merge_radar_view(
-        &mut self,
-        new_view: &Vec<Vec<String>>,
-        direction: CardinalDirection,
-    ) -> () {
-        let (dr, dc) = match direction {
+    pub fn merge_radar_view(&mut self, new_view: &Vec<Vec<String>>, direction: CardinalDirection) {
+        let (row_offset, column_offset) = match direction {
             CardinalDirection::North => (-2, 0),
             CardinalDirection::South => (2, 0),
             CardinalDirection::East => (0, 2),
             CardinalDirection::West => (0, -2),
         };
 
-        let candidate: (isize, isize) = (self.position.0 + dr, self.position.1 + dc);
+        let candidate: (isize, isize) = (
+            self.position.0 + row_offset,
+            self.position.1 + column_offset,
+        );
 
-        let (new_grid, effective_position) =
+        let (new_grid, effective_position, overall_top, overall_left, new_rows, new_cols) =
             Map::merge_radar_view_to_map_grid(&self.grid, new_view, candidate);
         self.grid = new_grid;
         self.position = effective_position;
+
+        self.visits =
+            Map::merge_visits(&self.visits, overall_top, overall_left, new_rows, new_cols);
     }
 
     fn merge_radar_view_to_map_grid(
         saved: &Vec<Vec<String>>,
         new_view: &Vec<Vec<String>>,
         merge_center: (isize, isize),
-    ) -> (Vec<Vec<String>>, (isize, isize)) {
+    ) -> (Vec<Vec<String>>, (isize, isize), isize, isize, usize, usize) {
         let view_size: usize = new_view.len();
         let half: usize = view_size / 2;
 
@@ -105,7 +111,111 @@ impl Map {
         let effective_position: (isize, isize) =
             (merge_center.0 - overall_top, merge_center.1 - overall_left);
 
-        return (merged, effective_position);
+        (
+            merged,
+            effective_position,
+            overall_top,
+            overall_left,
+            new_rows,
+            new_cols,
+        )
+    }
+
+    fn merge_visits(
+        saved: &Vec<Vec<u32>>,
+        overall_top: isize,
+        overall_left: isize,
+        new_rows: usize,
+        new_cols: usize,
+    ) -> Vec<Vec<u32>> {
+        let mut merged: Vec<Vec<u32>> = vec![vec![0; new_cols]; new_rows];
+        let saved_rows: isize = saved.len() as isize;
+        let saved_cols: isize = if saved.is_empty() {
+            0
+        } else {
+            saved[0].len() as isize
+        };
+        let offset_row: isize = -overall_top;
+        let offset_col: isize = -overall_left;
+        for i in 0..saved_rows {
+            for j in 0..saved_cols {
+                merged[(i + offset_row) as usize][(j + offset_col) as usize] =
+                    saved[i as usize][j as usize];
+            }
+        }
+        merged
+    }
+
+    pub fn next_move_tremaux(&mut self) -> Option<RelativeDirection> {
+        let moves: [(CardinalDirection, (isize, isize)); 4] = [
+            (CardinalDirection::North, (-2, 0)),
+            (CardinalDirection::East, (0, 2)),
+            (CardinalDirection::South, (2, 0)),
+            (CardinalDirection::West, (0, -2)),
+        ];
+
+        let (player_row, player_column) = self.position;
+        let mut best: Option<(CardinalDirection, (isize, isize), u32)> = None;
+        for (dir, (row_offset, column_offset)) in moves.iter() {
+            let new_player_row: isize = player_row + row_offset;
+            let new_player_column: isize = player_column + column_offset;
+            if new_player_row < 0
+                || new_player_column < 0
+                || self.grid.len() as isize <= new_player_row
+                || self.grid[0].len() as isize <= new_player_column
+            {
+                continue;
+            }
+            let cell: &String = &self.grid[new_player_row as usize][new_player_column as usize];
+            if cell == "•" || cell == "-" || cell == "|" {
+                continue;
+            }
+            let visits: u32 = self.visits[new_player_row as usize][new_player_column as usize];
+            if best.is_none() || visits < best.as_ref().unwrap().2 {
+                best = Some((dir.clone(), (*row_offset, *column_offset), visits));
+            }
+        }
+
+        if let Some((chosen_dir, (row_offset, column_offset), _)) = best {
+            let new_r: isize = player_row + row_offset;
+            let new_c: isize = player_column + column_offset;
+            self.position = (new_r, new_c);
+            self.visits[new_r as usize][new_c as usize] += 1;
+            let relative: RelativeDirection =
+                absolute_to_relative_direction(&self.orientation, &chosen_dir);
+            self.orientation = chosen_dir;
+
+            return Some(relative);
+        } else {
+            return None;
+        }
+    }
+}
+
+fn absolute_to_relative_direction(
+    player_orientation: &CardinalDirection,
+    target_direction: &CardinalDirection,
+) -> RelativeDirection {
+    match (player_orientation, target_direction) {
+        (CardinalDirection::North, CardinalDirection::North)
+        | (CardinalDirection::East, CardinalDirection::East)
+        | (CardinalDirection::South, CardinalDirection::South)
+        | (CardinalDirection::West, CardinalDirection::West) => RelativeDirection::Front,
+
+        (CardinalDirection::North, CardinalDirection::East)
+        | (CardinalDirection::East, CardinalDirection::South)
+        | (CardinalDirection::South, CardinalDirection::West)
+        | (CardinalDirection::West, CardinalDirection::North) => RelativeDirection::Right,
+
+        (CardinalDirection::North, CardinalDirection::West)
+        | (CardinalDirection::West, CardinalDirection::South)
+        | (CardinalDirection::South, CardinalDirection::East)
+        | (CardinalDirection::East, CardinalDirection::North) => RelativeDirection::Left,
+
+        (CardinalDirection::North, CardinalDirection::South)
+        | (CardinalDirection::South, CardinalDirection::North)
+        | (CardinalDirection::East, CardinalDirection::West)
+        | (CardinalDirection::West, CardinalDirection::East) => RelativeDirection::Back,
     }
 }
 
@@ -254,5 +364,27 @@ mod tests {
         print_string_matrix("expected final grid", &expected_final_grid);
 
         assert_eq!(map.grid, expected_final_grid);
+    }
+    #[test]
+    fn test_tremaux_algorithm() {
+        let grid: Vec<Vec<String>> = vec![
+            string_to_strings("•-•-•"),
+            string_to_strings("| | |"),
+            string_to_strings("•-•-•"),
+            string_to_strings("| | |"),
+            string_to_strings("•-•-•"),
+        ];
+        let mut map: Map = Map::new(&grid);
+        map.position = (2, 2);
+        map.orientation = CardinalDirection::North;
+
+        assert_eq!(map.next_move_tremaux(), Option::None);
+
+        map.grid[2][4] = String::from(" ");
+        map.visits[2][4] = 0;
+
+        let relative: Option<RelativeDirection> = map.next_move_tremaux();
+        assert_eq!(relative, Some(RelativeDirection::Right));
+        assert_eq!(map.position, (2, 4));
     }
 }
