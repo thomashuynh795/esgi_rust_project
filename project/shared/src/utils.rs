@@ -104,10 +104,8 @@ pub fn decode_base64(input: &str) -> Result<Vec<u8>, String> {
 ///
 /// Returns an error if the connection to the server failed.
 pub fn connect_to_server(server_address: &str) -> io::Result<TcpStream> {
-    log_info!("Connecting to {}...", server_address);
     match TcpStream::connect(server_address) {
         Ok(stream) => {
-            log_info!("Connected to the server");
             return Ok(stream);
         }
         Err(error) => {
