@@ -1,5 +1,10 @@
+use shared::log_debug;
 use shared::types::action::RelativeDirection;
-use shared::types::cardinal_direction::CardinalDirection;
+use shared::types::cardinal_direction::{self, CardinalDirection};
+use shared::types::log;
+use shared::utils::print_string_matrix;
+
+use crate::radar::{self, RadarView};
 
 pub struct Map {
     pub player_position: (isize, isize),
@@ -32,126 +37,281 @@ impl Map {
         }
     }
 
-    pub fn merge_radar_view(&mut self, new_view: &Vec<Vec<String>>, direction: CardinalDirection) {
-        self.current_cardinal_direction = direction;
-        let (row_offset, column_offset) = match direction {
+    pub fn merge_radar_view(
+        &mut self,
+        new_view: &Vec<Vec<String>>,
+        move_direction: CardinalDirection,
+    ) -> () {
+        log_debug!("Cardinal direction: {:?}", move_direction);
+        log_debug!("Player position: {:?}", self.player_position);
+        self.current_cardinal_direction = move_direction;
+        self.update_player_position_in_new_grid();
+        log_debug!("Updated player position: {:?}", self.player_position);
+        print_string_matrix("Map before update", &self.grid);
+        log_debug!("Rows number: {}", self.grid.len());
+        log_debug!("Columns number: {}", self.grid[0].len());
+        self.expand_grid_if_needed();
+        print_string_matrix("Map after expansion", &self.grid);
+        log_debug!("Rows number: {}", self.grid.len());
+        log_debug!("Columns number: {}", self.grid[0].len());
+        self.merge_radar_view_to_map_grid(new_view);
+    }
+
+    pub fn merge_radar_view_to_map_grid(&mut self, new_view: &Vec<Vec<String>>) {
+        /*
+           •-•-•-•
+           |1|2|3|
+           •-•-•-•
+           |4|5|6|
+           •-•-•-•
+           |7|8|9|
+           •-•-•-•
+        */
+        // let mut row: usize = self.player_position.0 as usize - 3;
+        // let mut col: usize = self.player_position.1 as usize - 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[0][1]).clone();
+        // col = self.player_position.1 as usize - 0;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[0][3]).clone();
+        // col = self.player_position.1 as usize + 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[0][5]).clone();
+
+        // row = self.player_position.0 as usize - 2;
+        // col = self.player_position.1 as usize - 3;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][0]).clone();
+        // col = self.player_position.1 as usize - 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][1]).clone();
+        // col = self.player_position.1 as usize - 1;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][2]).clone();
+        // col = self.player_position.1 as usize;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][3]).clone();
+        // col = self.player_position.1 as usize + 1;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][4]).clone();
+        // col = self.player_position.1 as usize + 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][5]).clone();
+        // col = self.player_position.1 as usize + 3;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][6]).clone();
+
+        // row = self.player_position.0 as usize - 1;
+        // col = self.player_position.1 as usize - 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[2][1]).clone();
+        // col = self.player_position.1 as usize - 0;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[2][3]).clone();
+        // col = self.player_position.1 as usize + 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[2][5]).clone();
+
+        // row = self.player_position.0 as usize;
+        // col = self.player_position.1 as usize - 3;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][0]).clone();
+        // col = self.player_position.1 as usize - 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][1]).clone();
+        // col = self.player_position.1 as usize - 1;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][2]).clone();
+        // col = self.player_position.1 as usize;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][3]).clone();
+        // col = self.player_position.1 as usize + 1;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][4]).clone();
+        // col = self.player_position.1 as usize + 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][5]).clone();
+        // col = self.player_position.1 as usize + 3;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][6]).clone();
+
+        // row = self.player_position.0 as usize + 1;
+        // col = self.player_position.1 as usize - 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[4][1]).clone();
+        // col = self.player_position.1 as usize - 0;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[4][3]).clone();
+        // col = self.player_position.1 as usize + 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[4][5]).clone();
+
+        // row = self.player_position.0 as usize + 2;
+        // col = self.player_position.1 as usize - 3;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][0]).clone();
+        // col = self.player_position.1 as usize - 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][1]).clone();
+        // col = self.player_position.1 as usize - 1;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][2]).clone();
+        // col = self.player_position.1 as usize;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][3]).clone();
+        // col = self.player_position.1 as usize + 1;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][4]).clone();
+        // col = self.player_position.1 as usize + 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][5]).clone();
+        // col = self.player_position.1 as usize + 3;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][6]).clone();
+
+        // row = self.player_position.0 as usize + 3;
+        // col = self.player_position.1 as usize - 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[6][1]).clone();
+        // col = self.player_position.1 as usize - 0;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[6][3]).clone();
+        // col = self.player_position.1 as usize + 2;
+        // self.grid[row][col] =
+        //     Map::select_string_to_save(&self.grid[row][col], &new_view[6][5]).clone();
+
+        for i in self.player_position.0..self.player_position.0 + 7 {
+            for j in self.player_position.1..self.player_position.1 + 7 {
+                let row = i as usize;
+                let col = j as usize;
+                self.grid[row][col] =
+                    Map::select_string_to_save(&self.grid[row][col], &new_view[row][col]).clone();
+            }
+        }
+    }
+
+    pub fn select_string_to_save<'a>(
+        grid_string: &'a String,
+        radar_view_string: &'a String,
+    ) -> &'a String {
+        if grid_string != "#" && radar_view_string == "#" {
+            return grid_string;
+        } else if grid_string == "#" && radar_view_string != "#" {
+            return radar_view_string;
+        } else {
+            return grid_string;
+        }
+    }
+
+    pub fn update_player_position_in_new_grid(&mut self) {
+        if self.should_expand_grid(self.current_cardinal_direction) {
+            match self.current_cardinal_direction {
+                CardinalDirection::West | CardinalDirection::North => {}
+                CardinalDirection::East => {
+                    self.player_position.1 += 2;
+                }
+                CardinalDirection::South => {
+                    self.player_position.0 += 2;
+                }
+            }
+        }
+    }
+
+    pub fn should_expand_grid(&self, next_cardinal_direction: CardinalDirection) -> bool {
+        let next_cardinal_direction_log: String = format!("{:?}", next_cardinal_direction);
+        log_debug!("{}", next_cardinal_direction_log);
+        let player_position_log: String = format!("{:?}", self.player_position);
+        let (row_offset, col_offset) = match next_cardinal_direction {
             CardinalDirection::North => (-2, 0),
             CardinalDirection::South => (2, 0),
             CardinalDirection::East => (0, 2),
             CardinalDirection::West => (0, -2),
         };
 
-        let candidate: (isize, isize) = (
+        let new_player_pos: (isize, isize) = (
             self.player_position.0 + row_offset,
-            self.player_position.1 + column_offset,
+            self.player_position.1 + col_offset,
         );
 
-        let (new_grid, effective_position, overall_top, overall_left, new_rows, new_cols) =
-            Map::merge_radar_view_to_map_grid(&self.grid, new_view, candidate);
-        self.grid = new_grid;
-        self.player_position = effective_position;
+        let player_position_log: String = format!("{:?}", new_player_pos);
 
-        self.visits =
-            Map::merge_visits(&self.visits, overall_top, overall_left, new_rows, new_cols);
-    }
-
-    fn merge_radar_view_to_map_grid(
-        saved: &Vec<Vec<String>>,
-        new_view: &Vec<Vec<String>>,
-        merge_center: (isize, isize),
-    ) -> (Vec<Vec<String>>, (isize, isize), isize, isize, usize, usize) {
-        let view_size: usize = new_view.len();
-        let half: isize = view_size as isize / 2;
-        let new_top: isize = merge_center.0 - half;
-        let new_left: isize = merge_center.1 - half;
-        let new_bottom: isize = new_top + view_size as isize - 1;
-        let new_right: isize = new_left + view_size as isize - 1;
-
-        let saved_rows: isize = saved.len() as isize;
-        let saved_cols: isize = if saved.is_empty() {
+        let grid_rows: isize = self.grid.len() as isize;
+        let grid_cols: isize = if grid_rows == 0 {
             0
         } else {
-            saved[0].len() as isize
+            self.grid[0].len() as isize
         };
 
-        let overall_top: isize = if new_top < 0 { new_top } else { 0 };
-        let overall_left: isize = if new_left < 0 { new_left } else { 0 };
-        let overall_bottom: isize = (saved_rows - 1).max(new_bottom);
-        let overall_right: isize = (saved_cols - 1).max(new_right);
+        match next_cardinal_direction {
+            CardinalDirection::North => new_player_pos.0 - 3 < 0,
+            CardinalDirection::South => new_player_pos.0 + 3 >= grid_rows,
+            CardinalDirection::East => new_player_pos.1 + 3 >= grid_cols,
+            CardinalDirection::West => new_player_pos.1 - 3 < 0,
+        }
+    }
 
-        let new_rows_total: usize = (overall_bottom - overall_top + 1) as usize;
-        let new_cols_total: usize = (overall_right - overall_left + 1) as usize;
+    pub fn expand_grid_if_needed(&mut self) -> () {
+        let grid_rows: isize = self.grid.len() as isize;
+        let grid_cols: isize = if grid_rows == 0 {
+            0
+        } else {
+            self.grid[0].len() as isize
+        };
+        log_debug!("Grid rows: {}", grid_rows);
+        log_debug!("Grid columns: {}", grid_cols);
 
-        if overall_top == 0
-            && overall_left == 0
-            && overall_bottom == saved_rows - 1
-            && overall_right == saved_cols - 1
-        {
-            let mut merged: Vec<Vec<String>> = saved.clone();
-            let merge_top: usize = new_top as usize;
-            let merge_left: usize = new_left as usize;
-            for i in 0..view_size {
-                for j in 0..view_size {
-                    let cell: String = new_view[i][j].clone();
-                    if cell != "#" {
-                        merged[merge_top + i][merge_left + j] = cell;
-                    }
-                }
-            }
-            for row in merged.iter_mut() {
-                for cell in row.iter_mut() {
-                    if cell == "P" {
-                        *cell = String::from(" ");
-                    }
-                }
-            }
-            return (
-                merged,
-                merge_center,
-                0,
-                0,
-                saved_rows as usize,
-                saved_cols as usize,
-            );
+        let mut expand_top: isize = 0;
+        let mut expand_left: isize = 0;
+        let mut expand_bottom: isize = 0;
+        let mut expand_right: isize = 0;
+
+        if self.player_position.0 - 3 < 0 {
+            expand_top = 2;
+        }
+        if self.player_position.1 - 3 < 0 {
+            expand_left = 2;
+        }
+        if grid_rows <= self.player_position.0 + 3 {
+            expand_bottom = 2;
+        }
+        if grid_cols <= self.player_position.1 + 3 {
+            expand_right = 2;
         }
 
-        let mut merged: Vec<Vec<String>> =
-            vec![vec![String::from("#"); new_cols_total]; new_rows_total];
-        let offset_row: isize = -overall_top;
-        let offset_col: isize = -overall_left;
-        for i in 0..saved_rows as usize {
-            for j in 0..saved_cols as usize {
-                merged[i + offset_row as usize][j + offset_col as usize] = saved[i][j].clone();
+        if expand_top == 0 && expand_left == 0 && expand_bottom == 0 && expand_right == 0 {
+            return;
+        }
+
+        let new_rows: isize = grid_rows + expand_top + expand_bottom;
+        let new_cols: isize = grid_cols + expand_left + expand_right;
+
+        let mut new_grid: Vec<Vec<String>> =
+            vec![vec![String::from("#"); new_cols as usize]; new_rows as usize];
+
+        let row_offset: isize = expand_top;
+        let col_offset: isize = expand_left;
+
+        for i in 0..grid_rows {
+            for j in 0..grid_cols {
+                new_grid[(i + row_offset) as usize][(j + col_offset) as usize] =
+                    self.grid[i as usize][j as usize].clone();
             }
         }
 
-        let merge_top: usize = (new_top - overall_top) as usize;
-        let merge_left: usize = (new_left - overall_left) as usize;
-        for i in 0..view_size {
-            for j in 0..view_size {
-                let cell: String = new_view[i][j].clone();
-                if cell != "#" {
-                    merged[merge_top + i][merge_left + j] = cell;
-                }
-            }
-        }
-        for row in merged.iter_mut() {
-            for cell in row.iter_mut() {
-                if cell == "P" {
-                    *cell = String::from(" ");
+        for i in 0..grid_rows {
+            for j in 0..grid_cols {
+                if i % 2 == 0 && j % 2 == 0 {
+                    new_grid[i as usize][j as usize] = String::from("•");
                 }
             }
         }
-        let effective_position: (isize, isize) =
-            (merge_center.0 - overall_top, merge_center.1 - overall_left);
-        (
-            merged,
-            effective_position,
-            overall_top,
-            overall_left,
-            new_rows_total,
-            new_cols_total,
-        )
+
+        log_debug!("New grid rows: {}", new_rows);
+        log_debug!("New grid columns: {}\n", new_cols);
+
+        self.grid = new_grid;
+
+        return;
     }
 
     fn merge_visits(
@@ -270,9 +430,244 @@ fn absolute_to_relative_direction(
 
 #[cfg(test)]
 mod tests {
+    use std::string;
+
     use super::*;
-    use crate::radar::RadarView;
+    use crate::{map, radar::RadarView};
     use shared::utils::{print_string_matrix, string_to_strings};
+
+    #[test]
+    fn test_should_expand_grid() {
+        let grid_1: Vec<Vec<String>> = vec![
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|1|2|3|"),
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|4|5|6|"),
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|7|8|9|"),
+            string_to_strings("•-•-•-•"),
+        ];
+        let mut map_1: Map = Map::new(&grid_1, CardinalDirection::North);
+        map_1.player_position = (3, 3);
+        assert_eq!(map_1.should_expand_grid(CardinalDirection::North), true);
+        assert_eq!(map_1.should_expand_grid(CardinalDirection::East), true);
+        assert_eq!(map_1.should_expand_grid(CardinalDirection::South), true);
+        assert_eq!(map_1.should_expand_grid(CardinalDirection::West), true);
+
+        let grid_2: Vec<Vec<String>> = vec![
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+        ];
+        let mut map_2: Map = Map::new(&grid_2, CardinalDirection::North);
+        map_2.player_position = (7, 7);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::North), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::East), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::South), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::West), false);
+        map_2.player_position = (1, 1);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::North), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::East), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::South), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::West), true);
+        map_2.player_position = (1, 13);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::North), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::East), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::South), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::West), false);
+        map_2.player_position = (13, 1);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::North), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::East), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::South), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::West), true);
+        map_2.player_position = (13, 13);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::North), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::East), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::South), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::West), false);
+        map_2.player_position = (3, 3);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::North), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::East), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::South), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::West), true);
+        map_2.player_position = (3, 11);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::North), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::East), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::South), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::West), false);
+        map_2.player_position = (11, 3);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::North), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::East), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::South), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::West), true);
+        map_2.player_position = (11, 11);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::North), false);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::East), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::South), true);
+        assert_eq!(map_2.should_expand_grid(CardinalDirection::West), false);
+    }
+
+    #[test]
+    fn test_expand_grid_if_needed() {
+        let grid_1: Vec<Vec<String>> = vec![
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+        ];
+        let north_grid: Vec<Vec<String>> = vec![
+            string_to_strings("•#•#•#•#•#•#•#•"),
+            string_to_strings("###############"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+        ];
+
+        let east_grid: Vec<Vec<String>> = vec![
+            string_to_strings("•-•-•-•-•-•-•-•#•"),
+            string_to_strings("|1|2|3|4|5|6|7|##"),
+            string_to_strings("•-•-•-•-•-•-•-•#•"),
+            string_to_strings("|1|2|3|4|5|6|7|##"),
+            string_to_strings("•-•-•-•-•-•-•-•#•"),
+            string_to_strings("|1|2|3|4|5|6|7|##"),
+            string_to_strings("•-•-•-•-•-•-•-•#•"),
+            string_to_strings("|1|2|3|4|5|6|7|##"),
+            string_to_strings("•-•-•-•-•-•-•-•#•"),
+            string_to_strings("|1|2|3|4|5|6|7|##"),
+            string_to_strings("•-•-•-•-•-•-•-•#•"),
+            string_to_strings("|1|2|3|4|5|6|7|##"),
+            string_to_strings("•-•-•-•-•-•-•-•#•"),
+            string_to_strings("|1|2|3|4|5|6|7|##"),
+            string_to_strings("•-•-•-•-•-•-•-•#•"),
+        ];
+
+        let south_grid: Vec<Vec<String>> = vec![
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("|1|2|3|4|5|6|7|"),
+            string_to_strings("•-•-•-•-•-•-•-•"),
+            string_to_strings("###############"),
+            string_to_strings("•#•#•#•#•#•#•#•"),
+        ];
+
+        let west_grid: Vec<Vec<String>> = vec![
+            string_to_strings("•#•-•-•-•-•-•-•-•"),
+            string_to_strings("##|1|2|3|4|5|6|7|"),
+            string_to_strings("•#•-•-•-•-•-•-•-•"),
+            string_to_strings("##|1|2|3|4|5|6|7|"),
+            string_to_strings("•#•-•-•-•-•-•-•-•"),
+            string_to_strings("##|1|2|3|4|5|6|7|"),
+            string_to_strings("•#•-•-•-•-•-•-•-•"),
+            string_to_strings("##|1|2|3|4|5|6|7|"),
+            string_to_strings("•#•-•-•-•-•-•-•-•"),
+            string_to_strings("##|1|2|3|4|5|6|7|"),
+            string_to_strings("•#•-•-•-•-•-•-•-•"),
+            string_to_strings("##|1|2|3|4|5|6|7|"),
+            string_to_strings("•#•-•-•-•-•-•-•-•"),
+            string_to_strings("##|1|2|3|4|5|6|7|"),
+            string_to_strings("•#•-•-•-•-•-•-•-•"),
+        ];
+        let mut map_1: Map = Map::new(&grid_1, CardinalDirection::North);
+        let mut map_2: Map = Map::new(&grid_1, CardinalDirection::East);
+        let mut map_3: Map = Map::new(&grid_1, CardinalDirection::South);
+        let mut map_4: Map = Map::new(&grid_1, CardinalDirection::West);
+        map_1.player_position = (3, 3);
+        map_2.player_position = (3, 12);
+        map_4.player_position = (7, 7);
+        map_4.expand_grid_if_needed();
+        assert_eq!(map_4.grid.len(), 15);
+        assert_eq!(map_4.grid[0].len(), 15);
+        assert_eq!(map_4.grid, grid_1);
+        map_4.player_position = (3, 1);
+        map_4.expand_grid_if_needed();
+        assert_eq!(map_4.grid.len(), 15);
+        assert_eq!(map_4.grid[0].len(), 17);
+        assert_eq!(map_4.grid, north_grid);
+    }
+
+    #[test]
+    fn test_update_player_position_in_new_grid_1() {
+        let grid: Vec<Vec<String>> = vec![
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|1|2|3|"),
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|4|5|6|"),
+            string_to_strings("•-•-•-•"),
+            string_to_strings("|7|8|9|"),
+            string_to_strings("•-•-•-•"),
+        ];
+        let mut map: Map = Map::new(&grid, CardinalDirection::North);
+        map.player_position = (3, 3);
+        map.current_cardinal_direction = CardinalDirection::North;
+
+        assert_eq!(map.player_position, (3, 3));
+        assert_eq!(map.current_cardinal_direction, CardinalDirection::North);
+
+        map.update_player_position_in_new_grid();
+        assert_eq!(map.player_position, (3, 3));
+        assert_eq!(map.current_cardinal_direction, CardinalDirection::North);
+
+        map.current_cardinal_direction = CardinalDirection::East;
+        map.update_player_position_in_new_grid();
+        assert_eq!(map.player_position, (3, 5));
+        assert_eq!(map.current_cardinal_direction, CardinalDirection::East);
+
+        map.current_cardinal_direction = CardinalDirection::South;
+        map.update_player_position_in_new_grid();
+        assert_eq!(map.player_position, (5, 5));
+        assert_eq!(map.current_cardinal_direction, CardinalDirection::South);
+
+        map.current_cardinal_direction = CardinalDirection::West;
+        map.update_player_position_in_new_grid();
+        assert_eq!(map.player_position, (5, 3));
+        assert_eq!(map.current_cardinal_direction, CardinalDirection::West);
+    }
 
     #[test]
     fn test_merge_radar_views_with_directions_1() {

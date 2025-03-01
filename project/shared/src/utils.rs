@@ -1,5 +1,5 @@
 use crate::{
-    log_debug, log_error, log_info, log_warning,
+    log_debug, log_error, log_warning,
     types::message::{
         GameMessage, RegisterTeam, RegisterTeamResult, SubscribePlayer, SubscribePlayerResult,
     },
