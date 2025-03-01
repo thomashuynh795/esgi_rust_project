@@ -250,68 +250,65 @@ impl Map {
         }
     }
 
-    pub fn expand_grid_if_needed(&mut self) -> () {
-        let grid_rows: isize = self.grid.len() as isize;
-        let grid_cols: isize = if grid_rows == 0 {
+    pub fn expand_grid_if_needed(&mut self) {
+        let grid_rows = self.grid.len() as isize;
+        let grid_cols = if grid_rows == 0 {
             0
         } else {
             self.grid[0].len() as isize
         };
-        log_debug!("Grid rows: {}", grid_rows);
-        log_debug!("Grid columns: {}", grid_cols);
 
         let mut expand_top: isize = 0;
         let mut expand_left: isize = 0;
         let mut expand_bottom: isize = 0;
         let mut expand_right: isize = 0;
 
-        if self.player_position.0 - 3 < 0 {
-            expand_top = 2;
-        }
-        if self.player_position.1 - 3 < 0 {
-            expand_left = 2;
-        }
-        if grid_rows <= self.player_position.0 + 3 {
-            expand_bottom = 2;
-        }
-        if grid_cols <= self.player_position.1 + 3 {
-            expand_right = 2;
-        }
-
-        if expand_top == 0 && expand_left == 0 && expand_bottom == 0 && expand_right == 0 {
-            return;
+        match self.current_cardinal_direction {
+            CardinalDirection::North => {
+                expand_top = 2;
+            }
+            CardinalDirection::East => {
+                expand_right = 2;
+            }
+            CardinalDirection::South => {
+                expand_bottom = 2;
+            }
+            CardinalDirection::West => {
+                expand_left = 2;
+            }
         }
 
         let new_rows: isize = grid_rows + expand_top + expand_bottom;
         let new_cols: isize = grid_cols + expand_left + expand_right;
 
+        if new_rows == grid_rows && new_cols == grid_cols {
+            return;
+        }
+
         let mut new_grid: Vec<Vec<String>> =
             vec![vec![String::from("#"); new_cols as usize]; new_rows as usize];
 
-        let row_offset: isize = expand_top;
-        let col_offset: isize = expand_left;
-
         for i in 0..grid_rows {
             for j in 0..grid_cols {
-                new_grid[(i + row_offset) as usize][(j + col_offset) as usize] =
+                new_grid[(i + expand_top) as usize][(j + expand_left) as usize] =
                     self.grid[i as usize][j as usize].clone();
             }
         }
 
-        for i in 0..grid_rows {
-            for j in 0..grid_cols {
+        for i in 0..new_rows {
+            for j in 0..new_cols {
                 if i % 2 == 0 && j % 2 == 0 {
-                    new_grid[i as usize][j as usize] = String::from("•");
+                    new_grid[i as usize][j as usize] = "•".to_string();
                 }
             }
         }
 
-        log_debug!("New grid rows: {}", new_rows);
-        log_debug!("New grid columns: {}\n", new_cols);
+        self.player_position.0 += expand_top;
+        self.player_position.1 += expand_left;
+
+        print_string_matrix("Expanded grid", &new_grid);
 
         self.grid = new_grid;
-
-        return;
     }
 
     fn merge_visits(
@@ -538,6 +535,7 @@ mod tests {
             string_to_strings("|1|2|3|4|5|6|7|"),
             string_to_strings("•-•-•-•-•-•-•-•"),
         ];
+
         let north_grid: Vec<Vec<String>> = vec![
             string_to_strings("•#•#•#•#•#•#•#•"),
             string_to_strings("###############"),
@@ -617,18 +615,41 @@ mod tests {
         let mut map_2: Map = Map::new(&grid_1, CardinalDirection::East);
         let mut map_3: Map = Map::new(&grid_1, CardinalDirection::South);
         let mut map_4: Map = Map::new(&grid_1, CardinalDirection::West);
+
         map_1.player_position = (3, 3);
-        map_2.player_position = (3, 12);
-        map_4.player_position = (7, 7);
-        map_4.expand_grid_if_needed();
+        map_2.player_position = (12, 12);
+        map_3.player_position = (12, 12);
+        map_4.player_position = (3, 3);
+
+        assert_eq!(map_1.grid.len(), 15);
+        assert_eq!(map_2.grid.len(), 15);
+        assert_eq!(map_3.grid.len(), 15);
         assert_eq!(map_4.grid.len(), 15);
+
+        assert_eq!(map_1.grid[0].len(), 15);
+        assert_eq!(map_2.grid[0].len(), 15);
+        assert_eq!(map_3.grid[0].len(), 15);
         assert_eq!(map_4.grid[0].len(), 15);
-        assert_eq!(map_4.grid, grid_1);
-        map_4.player_position = (3, 1);
+
+        map_1.expand_grid_if_needed();
+        map_2.expand_grid_if_needed();
+        map_3.expand_grid_if_needed();
         map_4.expand_grid_if_needed();
+
+        assert_eq!(map_1.grid.len(), 17);
+        assert_eq!(map_2.grid.len(), 15);
+        assert_eq!(map_3.grid.len(), 17);
         assert_eq!(map_4.grid.len(), 15);
+
+        assert_eq!(map_1.grid[0].len(), 15);
+        assert_eq!(map_2.grid[0].len(), 17);
+        assert_eq!(map_3.grid[0].len(), 15);
         assert_eq!(map_4.grid[0].len(), 17);
-        assert_eq!(map_4.grid, north_grid);
+
+        assert_eq!(map_1.grid, north_grid);
+        assert_eq!(map_2.grid, east_grid);
+        assert_eq!(map_3.grid, south_grid);
+        assert_eq!(map_4.grid, west_grid);
     }
 
     #[test]
