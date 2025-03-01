@@ -370,15 +370,15 @@ impl RadarView {
     fn rotate_radar_view(&mut self) -> () {
         self.grid = match self.cardinal_direction {
             CardinalDirection::North => self.grid.clone(),
-            CardinalDirection::East => {
+            CardinalDirection::East => RadarView::rotate_90_clockwise(&self.grid.clone()),
+            CardinalDirection::South => {
+                RadarView::rotate_90_clockwise(&RadarView::rotate_90_clockwise(&self.grid.clone()))
+            }
+            CardinalDirection::West => {
                 RadarView::rotate_90_clockwise(&RadarView::rotate_90_clockwise(
                     &RadarView::rotate_90_clockwise(&self.grid.clone()),
                 ))
             }
-            CardinalDirection::South => {
-                RadarView::rotate_90_clockwise(&RadarView::rotate_90_clockwise(&self.grid.clone()))
-            }
-            CardinalDirection::West => RadarView::rotate_90_clockwise(&self.grid.clone()),
         };
     }
 
@@ -805,11 +805,11 @@ mod tests {
             radar_items: vec![],
             grid: vec![
                 string_to_strings("•-•-•-•"),
-                string_to_strings("|7|4|1|"),
+                string_to_strings("|3|6|9|"),
                 string_to_strings("•-•-•-•"),
-                string_to_strings("|8|5|2|"),
+                string_to_strings("|2|5|8|"),
                 string_to_strings("•-•-•-•"),
-                string_to_strings("|9|6|3|"),
+                string_to_strings("|1|4|7|"),
                 string_to_strings("•-•-•-•"),
             ],
             cardinal_direction: CardinalDirection::East,
@@ -843,11 +843,11 @@ mod tests {
             radar_items: vec![],
             grid: vec![
                 string_to_strings("•-•-•-•"),
-                string_to_strings("|3|6|9|"),
+                string_to_strings("|7|4|1|"),
                 string_to_strings("•-•-•-•"),
-                string_to_strings("|2|5|8|"),
+                string_to_strings("|8|5|2|"),
                 string_to_strings("•-•-•-•"),
-                string_to_strings("|1|4|7|"),
+                string_to_strings("|9|6|3|"),
                 string_to_strings("•-•-•-•"),
             ],
             cardinal_direction: CardinalDirection::West,
