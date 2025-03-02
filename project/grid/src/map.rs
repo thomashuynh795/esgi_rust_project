@@ -61,137 +61,14 @@ impl Map {
     }
 
     pub fn merge_radar_view_to_map_grid(&mut self, new_view: &Vec<Vec<String>>) {
-        /*
-           •-•-•-•
-           |1|2|3|
-           •-•-•-•
-           |4|5|6|
-           •-•-•-•
-           |7|8|9|
-           •-•-•-•
-        */
-        // let mut row: usize = self.player_position.0 as usize - 3;
-        // let mut col: usize = self.player_position.1 as usize - 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[0][1]).clone();
-        // col = self.player_position.1 as usize - 0;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[0][3]).clone();
-        // col = self.player_position.1 as usize + 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[0][5]).clone();
-
-        // row = self.player_position.0 as usize - 2;
-        // col = self.player_position.1 as usize - 3;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][0]).clone();
-        // col = self.player_position.1 as usize - 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][1]).clone();
-        // col = self.player_position.1 as usize - 1;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][2]).clone();
-        // col = self.player_position.1 as usize;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][3]).clone();
-        // col = self.player_position.1 as usize + 1;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][4]).clone();
-        // col = self.player_position.1 as usize + 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][5]).clone();
-        // col = self.player_position.1 as usize + 3;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[1][6]).clone();
-
-        // row = self.player_position.0 as usize - 1;
-        // col = self.player_position.1 as usize - 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[2][1]).clone();
-        // col = self.player_position.1 as usize - 0;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[2][3]).clone();
-        // col = self.player_position.1 as usize + 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[2][5]).clone();
-
-        // row = self.player_position.0 as usize;
-        // col = self.player_position.1 as usize - 3;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][0]).clone();
-        // col = self.player_position.1 as usize - 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][1]).clone();
-        // col = self.player_position.1 as usize - 1;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][2]).clone();
-        // col = self.player_position.1 as usize;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][3]).clone();
-        // col = self.player_position.1 as usize + 1;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][4]).clone();
-        // col = self.player_position.1 as usize + 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][5]).clone();
-        // col = self.player_position.1 as usize + 3;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[3][6]).clone();
-
-        // row = self.player_position.0 as usize + 1;
-        // col = self.player_position.1 as usize - 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[4][1]).clone();
-        // col = self.player_position.1 as usize - 0;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[4][3]).clone();
-        // col = self.player_position.1 as usize + 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[4][5]).clone();
-
-        // row = self.player_position.0 as usize + 2;
-        // col = self.player_position.1 as usize - 3;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][0]).clone();
-        // col = self.player_position.1 as usize - 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][1]).clone();
-        // col = self.player_position.1 as usize - 1;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][2]).clone();
-        // col = self.player_position.1 as usize;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][3]).clone();
-        // col = self.player_position.1 as usize + 1;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][4]).clone();
-        // col = self.player_position.1 as usize + 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][5]).clone();
-        // col = self.player_position.1 as usize + 3;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[5][6]).clone();
-
-        // row = self.player_position.0 as usize + 3;
-        // col = self.player_position.1 as usize - 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[6][1]).clone();
-        // col = self.player_position.1 as usize - 0;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[6][3]).clone();
-        // col = self.player_position.1 as usize + 2;
-        // self.grid[row][col] =
-        //     Map::select_string_to_save(&self.grid[row][col], &new_view[6][5]).clone();
-
-        let lowest_row = self.player_position.0 as usize - 3;
-        let lowest_col = self.player_position.1 as usize - 3;
-        for i in lowest_row..self.player_position.0 as usize + 4 {
-            for j in lowest_col..self.player_position.1 as usize + 4 {
-                let row = i as usize;
-                let col = j as usize;
-                self.grid[row][col] = Map::select_string_to_save(
-                    &self.grid[row][col],
-                    &new_view[row - lowest_row][col - lowest_col],
+        let view_size: usize = 7;
+        let lowest_row: usize = self.player_position.0 as usize - 3;
+        let lowest_col: usize = self.player_position.1 as usize - 3;
+        for i in 0..view_size {
+            for j in 0..view_size {
+                self.grid[lowest_row + i][lowest_col + j] = Map::select_string_to_save(
+                    &self.grid[lowest_row + i][lowest_col + j],
+                    &new_view[i][j],
                 )
                 .clone();
             }
@@ -202,51 +79,12 @@ impl Map {
         grid_string: &'a String,
         radar_view_string: &'a String,
     ) -> &'a String {
-        if grid_string != "#" && radar_view_string == "#" {
-            return grid_string;
-        } else if grid_string == "#" && radar_view_string != "#" {
-            return radar_view_string;
+        if radar_view_string != "#" {
+            radar_view_string
         } else {
-            return grid_string;
+            grid_string
         }
     }
-
-    // pub fn update_player_position_in_new_grid(&mut self) {
-    //     log_debug!(
-    //         "update_player_position_in_new_grid >>> Player position before: {:?}",
-    //         self.player_position
-    //     );
-    //     if self.should_expand_grid(self.current_cardinal_direction) {
-    //         match self.current_cardinal_direction {
-    //             CardinalDirection::West | CardinalDirection::North => {}
-    //             CardinalDirection::East => {
-    //                 self.player_position.1 += 2;
-    //             }
-    //             CardinalDirection::South => {
-    //                 self.player_position.0 += 2;
-    //             }
-    //         }
-    //     } else {
-    //         match self.current_cardinal_direction {
-    //             CardinalDirection::North => {
-    //                 self.player_position.0 -= 2;
-    //             }
-    //             CardinalDirection::East => {
-    //                 self.player_position.1 += 2;
-    //             }
-    //             CardinalDirection::South => {
-    //                 self.player_position.0 += 2;
-    //             }
-    //             CardinalDirection::West => {
-    //                 self.player_position.1 -= 2;
-    //             }
-    //         }
-    //     }
-    //     log_debug!(
-    //         "update_player_position_in_new_grid >>> Player position after: {:?}\n",
-    //         self.player_position
-    //     );
-    // }
 
     pub fn should_expand_grid(&self, next_cardinal_direction: CardinalDirection) -> bool {
         let (row_offset, col_offset) = match next_cardinal_direction {
@@ -326,14 +164,6 @@ impl Map {
             for j in 0..grid_cols {
                 new_grid[(i + expand_top) as usize][(j + expand_left) as usize] =
                     self.grid[i as usize][j as usize].clone();
-            }
-        }
-
-        for i in 0..new_rows {
-            for j in 0..new_cols {
-                if i % 2 == 0 && j % 2 == 0 {
-                    new_grid[i as usize][j as usize] = "•".to_string();
-                }
             }
         }
 

@@ -3,9 +3,8 @@ extern crate shared;
 
 use grid::map::Map;
 use grid::radar::RadarView;
-use shared::types::action::{Action, RelativeDirection};
+use shared::types::action::Action;
 use shared::types::cardinal_direction::CardinalDirection;
-use shared::types::log;
 use shared::types::message::GameMessage;
 use shared::utils::{connect_to_server, print_string_matrix, register_player, register_team};
 use std::collections::HashMap;
@@ -96,7 +95,7 @@ fn main() -> io::Result<()> {
                         log_warning!("Unexpected message received.");
                     }
                 }
-                thread::sleep(Duration::from_millis(500));
+                thread::sleep(Duration::from_millis(200));
             }
             None => {
                 log_info!("No more possible moves. Stopping exploration.\n");
