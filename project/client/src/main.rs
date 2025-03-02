@@ -2,6 +2,7 @@
 extern crate shared;
 pub mod player;
 pub mod team;
+
 use std::env;
 use std::io;
 use std::sync::{Arc, Condvar, Mutex};
@@ -30,7 +31,7 @@ fn main() -> io::Result<()> {
     let server_address: &String = &args[1];
 
     // Registers the team.
-    let mut team: Team = Team::register(server_address, &String::from("Team 1"))?;
+    let mut team: Team = Team::register(server_address, &String::from("Team 1"), PLAYERS_NUMBER)?;
 
     for i in 0..PLAYERS_NUMBER {
         let player_name: String = format!("Player {}", i + 1);
@@ -42,6 +43,7 @@ fn main() -> io::Result<()> {
         Mutex::new(TurnState {
             current: 0,
             game_over: false,
+            players_finished: 0,
         }),
         Condvar::new(),
     ));
@@ -62,6 +64,7 @@ fn main() -> io::Result<()> {
                 player.play(player_id, turn_state, PLAYERS_NUMBER)?;
                 return Ok(());
             });
+
         // Adds the thread to the vector.
         threads.push(thread);
     }
