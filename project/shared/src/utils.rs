@@ -128,9 +128,9 @@ pub fn connect_to_server(server_address: &str) -> io::Result<TcpStream> {
 /// # Errors
 ///
 /// Returns an error if the server response is unexpected.
-pub fn register_team(stream: &mut TcpStream) -> io::Result<String> {
+pub fn register_team(stream: &mut TcpStream, team_name: &String) -> io::Result<String> {
     let register_team = RegisterTeam {
-        name: String::from("team_1"),
+        name: String::from(team_name),
     };
     let message = GameMessage::RegisterTeam(register_team);
     message.send(stream)?;

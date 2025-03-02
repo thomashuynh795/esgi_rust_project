@@ -1,6 +1,7 @@
 use shared::log_debug;
 use shared::types::action::RelativeDirection;
 use shared::types::cardinal_direction::CardinalDirection;
+use shared::utils::print_string_matrix;
 
 pub struct Map {
     pub player_position: (isize, isize),
@@ -16,14 +17,11 @@ impl Map {
     ) -> Map {
         let grid: Vec<Vec<String>> = initial_grid.clone();
         let view_size: usize = grid.len();
-        let center: (isize, isize) = (
-            view_size as isize / 2,
-            if view_size > 0 {
-                grid[0].len() as isize / 2
-            } else {
-                0
-            },
-        );
+        let center: (isize, isize) = if view_size > 0 && grid[0].len() > 0 {
+            (view_size as isize / 2, grid[0].len() as isize / 2)
+        } else {
+            (0, 0)
+        };
         let visits: Vec<Vec<u32>> = vec![vec![0; grid[0].len()]; grid.len()];
         Map {
             player_position: center,
@@ -37,56 +35,52 @@ impl Map {
         &mut self,
         new_view: &Vec<Vec<String>>,
         move_direction: CardinalDirection,
-    ) -> () {
-        // log_debug!(
-        //     "merge_radar_view >>> Cardinal direction: {:?}",
-        //     move_direction
-        // );
+    ) {
         self.current_cardinal_direction = move_direction;
-        // print_string_matrix("merge_radar_view >>> Map before update", &self.grid);
-        // log_debug!("merge_radar_view >>> Rows number: {}", self.grid.len());
-        // log_debug!(
-        //     "merge_radar_view >>> Columns number: {}",
-        //     self.grid[0].len()
-        // );
         self.expand_grid_if_needed();
-        // print_string_matrix("merge_radar_view >>> Map after expansion", &self.grid);
-        // log_debug!("merge_radar_view >>> Rows number: {}", self.grid.len());
-        // log_debug!(
-        //     "merge_radar_view >>> Columns number: {}",
-        //     self.grid[0].len()
-        // );
         self.merge_radar_view_to_map_grid(new_view);
     }
 
     pub fn merge_radar_view_to_map_grid(&mut self, new_view: &Vec<Vec<String>>) {
-        let view_size: usize = 7;
-        let player_row: usize = self.player_position.0 as usize;
-        let player_col: usize = self.player_position.1 as usize;
+        let view_size: usize = new_view.len();
+        let half = view_size / 2;
 
-        let mut lowest_row: usize = if player_row >= 3 { player_row - 3 } else { 0 };
-        let mut lowest_col: usize = if player_col >= 3 { player_col - 3 } else { 0 };
-
-        if self.grid.len() >= view_size {
-            lowest_row = lowest_row.min(self.grid.len() - view_size);
+        let grid_rows: usize = self.grid.len();
+        let grid_cols: usize = self.grid[0].len();
+        let mut start_row: usize = if self.player_position.0 as usize >= half {
+            self.player_position.0 as usize - half
+        } else {
+            0
+        };
+        let mut start_col: usize = if self.player_position.1 as usize >= half {
+            self.player_position.1 as usize - half
+        } else {
+            0
+        };
+        if grid_rows >= view_size {
+            start_row = start_row.min(grid_rows - view_size);
         }
-        if self.grid[0].len() >= view_size {
-            lowest_col = lowest_col.min(self.grid[0].len() - view_size);
+        if grid_cols >= view_size {
+            start_col = start_col.min(grid_cols - view_size);
         }
 
         log_debug!(
-            "grid rows: {} cols: {}",
-            self.grid.len(),
-            self.grid[0].len()
+            "Merge_radar_view_to_map_grid: grid {}x{}",
+            grid_rows,
+            grid_cols
         );
         for i in 0..view_size {
             for j in 0..view_size {
-                log_debug!("merging cell ({}, {})", i, j);
-                self.grid[lowest_row + i][lowest_col + j] = Map::select_string_to_save(
-                    &self.grid[lowest_row + i][lowest_col + j],
-                    &new_view[i][j],
-                )
-                .clone();
+                // log_debug!(
+                //     "Merging cell view[{}][{}] into grid[{}][{}]",
+                //     i,
+                //     j,
+                //     start_row + i,
+                //     start_col + j
+                // );
+                if new_view[i][j] != "#" {
+                    self.grid[start_row + i][start_col + j] = new_view[i][j].clone();
+                }
             }
         }
     }
@@ -116,11 +110,7 @@ impl Map {
         );
 
         let grid_rows: isize = self.grid.len() as isize;
-        let grid_cols: isize = if grid_rows == 0 {
-            0
-        } else {
-            self.grid[0].len() as isize
-        };
+        let grid_cols: isize = self.grid[0].len() as isize;
 
         match next_cardinal_direction {
             CardinalDirection::North => new_player_pos.0 - 3 < 0,
@@ -131,12 +121,8 @@ impl Map {
     }
 
     pub fn expand_grid_if_needed(&mut self) {
-        let grid_rows = self.grid.len() as isize;
-        let grid_cols = if grid_rows == 0 {
-            0
-        } else {
-            self.grid[0].len() as isize
-        };
+        let grid_rows: isize = self.grid.len() as isize;
+        let grid_cols: isize = self.grid[0].len() as isize;
 
         let mut expand_top: isize = 0;
         let mut expand_left: isize = 0;
@@ -163,8 +149,7 @@ impl Map {
             return;
         }
 
-        let mut new_grid: Vec<Vec<String>> =
-            vec![vec![String::from("#"); new_cols as usize]; new_rows as usize];
+        let mut new_grid: Vec<Vec<String>> = vec![vec![String::from("#"); new_cols as usize]; new_rows as usize];
         for i in 0..grid_rows {
             for j in 0..grid_cols {
                 new_grid[(i + expand_top) as usize][(j + expand_left) as usize] =
@@ -175,12 +160,8 @@ impl Map {
         self.player_position.0 += expand_top;
         self.player_position.1 += expand_left;
 
-        let old_visit_rows = self.visits.len() as isize;
-        let old_visit_cols = if old_visit_rows == 0 {
-            0
-        } else {
-            self.visits[0].len() as isize
-        };
+        let old_visit_rows: isize = self.visits.len() as isize;
+        let old_visit_cols: isize = self.visits[0].len() as isize;
         let mut new_visits: Vec<Vec<u32>> = vec![vec![0; new_cols as usize]; new_rows as usize];
         for i in 0..old_visit_rows {
             for j in 0..old_visit_cols {
@@ -203,9 +184,9 @@ impl Map {
         let (player_row, player_column) = self.player_position;
         let mut best_move: Option<(CardinalDirection, (isize, isize), u32)> = None;
 
-        for (dir, (row_offset, column_offset), (wall_row_offset, wall_col_offset)) in moves.iter() {
+        for (dir, (row_offset, col_offset), (wall_row_offset, wall_col_offset)) in moves.iter() {
             let new_player_row: isize = player_row + row_offset;
-            let new_player_column: isize = player_column + column_offset;
+            let new_player_column: isize = player_column + col_offset;
             let wall_row: isize = player_row + wall_row_offset;
             let wall_col: isize = player_column + wall_col_offset;
 
@@ -223,31 +204,26 @@ impl Map {
             }
 
             let cell = &self.grid[new_player_row as usize][new_player_column as usize];
-
             if cell == "•" || cell == "-" || cell == "|" {
                 continue;
             }
 
             let visits = self.visits[new_player_row as usize][new_player_column as usize];
-
             if best_move.is_none() || visits < best_move.as_ref().unwrap().2 {
-                best_move = Some((dir.clone(), (*row_offset, *column_offset), visits));
+                best_move = Some((dir.clone(), (*row_offset, *col_offset), visits));
             }
         }
 
-        if let Some((chosen_cardinal_direction, (row_offset, column_offset), _)) = best_move {
+        if let Some((chosen_dir, (row_offset, col_offset), _)) = best_move {
             let new_r: isize = player_row + row_offset;
-            let new_c: isize = player_column + column_offset;
+            let new_c: isize = player_column + col_offset;
             self.player_position = (new_r, new_c);
             self.visits[new_r as usize][new_c as usize] += 1;
 
-            let relative_direction: RelativeDirection = absolute_to_relative_direction(
-                &self.current_cardinal_direction,
-                &chosen_cardinal_direction,
-            );
-            self.current_cardinal_direction = chosen_cardinal_direction;
-
-            return Some((relative_direction, chosen_cardinal_direction));
+            let relative_direction: RelativeDirection =
+                absolute_to_relative_direction(&self.current_cardinal_direction, &chosen_dir);
+            self.current_cardinal_direction = chosen_dir;
+            Some((relative_direction, self.current_cardinal_direction.clone()))
         } else {
             return None;
         }
