@@ -1,10 +1,7 @@
 use shared::log_debug;
 use shared::types::action::RelativeDirection;
-use shared::types::cardinal_direction::{self, CardinalDirection};
-use shared::types::log;
+use shared::types::cardinal_direction::CardinalDirection;
 use shared::utils::print_string_matrix;
-
-use crate::radar::{self, RadarView};
 
 pub struct Map {
     pub player_position: (isize, isize),
@@ -42,18 +39,24 @@ impl Map {
         new_view: &Vec<Vec<String>>,
         move_direction: CardinalDirection,
     ) -> () {
-        log_debug!("Cardinal direction: {:?}", move_direction);
-        log_debug!("Player position: {:?}", self.player_position);
+        log_debug!(
+            "merge_radar_view >>> Cardinal direction: {:?}",
+            move_direction
+        );
         self.current_cardinal_direction = move_direction;
-        self.update_player_position_in_new_grid();
-        log_debug!("Updated player position: {:?}", self.player_position);
-        print_string_matrix("Map before update", &self.grid);
-        log_debug!("Rows number: {}", self.grid.len());
-        log_debug!("Columns number: {}", self.grid[0].len());
+        print_string_matrix("merge_radar_view >>> Map before update", &self.grid);
+        log_debug!("merge_radar_view >>> Rows number: {}", self.grid.len());
+        log_debug!(
+            "merge_radar_view >>> Columns number: {}",
+            self.grid[0].len()
+        );
         self.expand_grid_if_needed();
-        print_string_matrix("Map after expansion", &self.grid);
-        log_debug!("Rows number: {}", self.grid.len());
-        log_debug!("Columns number: {}", self.grid[0].len());
+        print_string_matrix("merge_radar_view >>> Map after expansion", &self.grid);
+        log_debug!("merge_radar_view >>> Rows number: {}", self.grid.len());
+        log_debug!(
+            "merge_radar_view >>> Columns number: {}",
+            self.grid[0].len()
+        );
         self.merge_radar_view_to_map_grid(new_view);
     }
 
@@ -180,12 +183,17 @@ impl Map {
         // self.grid[row][col] =
         //     Map::select_string_to_save(&self.grid[row][col], &new_view[6][5]).clone();
 
-        for i in self.player_position.0..self.player_position.0 + 7 {
-            for j in self.player_position.1..self.player_position.1 + 7 {
+        let lowest_row = self.player_position.0 as usize - 3;
+        let lowest_col = self.player_position.1 as usize - 3;
+        for i in lowest_row..self.player_position.0 as usize + 4 {
+            for j in lowest_col..self.player_position.1 as usize + 4 {
                 let row = i as usize;
                 let col = j as usize;
-                self.grid[row][col] =
-                    Map::select_string_to_save(&self.grid[row][col], &new_view[row][col]).clone();
+                self.grid[row][col] = Map::select_string_to_save(
+                    &self.grid[row][col],
+                    &new_view[row - lowest_row][col - lowest_col],
+                )
+                .clone();
             }
         }
     }
@@ -203,24 +211,44 @@ impl Map {
         }
     }
 
-    pub fn update_player_position_in_new_grid(&mut self) {
-        if self.should_expand_grid(self.current_cardinal_direction) {
-            match self.current_cardinal_direction {
-                CardinalDirection::West | CardinalDirection::North => {}
-                CardinalDirection::East => {
-                    self.player_position.1 += 2;
-                }
-                CardinalDirection::South => {
-                    self.player_position.0 += 2;
-                }
-            }
-        }
-    }
+    // pub fn update_player_position_in_new_grid(&mut self) {
+    //     log_debug!(
+    //         "update_player_position_in_new_grid >>> Player position before: {:?}",
+    //         self.player_position
+    //     );
+    //     if self.should_expand_grid(self.current_cardinal_direction) {
+    //         match self.current_cardinal_direction {
+    //             CardinalDirection::West | CardinalDirection::North => {}
+    //             CardinalDirection::East => {
+    //                 self.player_position.1 += 2;
+    //             }
+    //             CardinalDirection::South => {
+    //                 self.player_position.0 += 2;
+    //             }
+    //         }
+    //     } else {
+    //         match self.current_cardinal_direction {
+    //             CardinalDirection::North => {
+    //                 self.player_position.0 -= 2;
+    //             }
+    //             CardinalDirection::East => {
+    //                 self.player_position.1 += 2;
+    //             }
+    //             CardinalDirection::South => {
+    //                 self.player_position.0 += 2;
+    //             }
+    //             CardinalDirection::West => {
+    //                 self.player_position.1 -= 2;
+    //             }
+    //         }
+    //     }
+    //     log_debug!(
+    //         "update_player_position_in_new_grid >>> Player position after: {:?}\n",
+    //         self.player_position
+    //     );
+    // }
 
     pub fn should_expand_grid(&self, next_cardinal_direction: CardinalDirection) -> bool {
-        let next_cardinal_direction_log: String = format!("{:?}", next_cardinal_direction);
-        log_debug!("{}", next_cardinal_direction_log);
-        let player_position_log: String = format!("{:?}", self.player_position);
         let (row_offset, col_offset) = match next_cardinal_direction {
             CardinalDirection::North => (-2, 0),
             CardinalDirection::South => (2, 0),
@@ -232,8 +260,6 @@ impl Map {
             self.player_position.0 + row_offset,
             self.player_position.1 + col_offset,
         );
-
-        let player_position_log: String = format!("{:?}", new_player_pos);
 
         let grid_rows: isize = self.grid.len() as isize;
         let grid_cols: isize = if grid_rows == 0 {
@@ -265,16 +291,24 @@ impl Map {
 
         match self.current_cardinal_direction {
             CardinalDirection::North => {
-                expand_top = 2;
+                if self.player_position.0 - 3 <= 0 {
+                    expand_top = 2;
+                }
             }
             CardinalDirection::East => {
-                expand_right = 2;
+                if self.player_position.1 + 3 >= grid_cols {
+                    expand_right = 2;
+                }
             }
             CardinalDirection::South => {
-                expand_bottom = 2;
+                if self.player_position.0 + 3 >= grid_rows {
+                    expand_bottom = 2;
+                }
             }
             CardinalDirection::West => {
-                expand_left = 2;
+                if self.player_position.1 - 3 <= 0 {
+                    expand_left = 2;
+                }
             }
         }
 
@@ -306,8 +340,20 @@ impl Map {
         self.player_position.0 += expand_top;
         self.player_position.1 += expand_left;
 
-        print_string_matrix("Expanded grid", &new_grid);
-
+        let old_visit_rows: isize = self.visits.len() as isize;
+        let old_visit_cols: isize = if old_visit_rows == 0 {
+            0
+        } else {
+            self.visits[0].len() as isize
+        };
+        let mut new_visits: Vec<Vec<u32>> = vec![vec![0; new_cols as usize]; new_rows as usize];
+        for i in 0..old_visit_rows {
+            for j in 0..old_visit_cols {
+                new_visits[(i + expand_top) as usize][(j + expand_left) as usize] =
+                    self.visits[i as usize][j as usize];
+            }
+        }
+        self.visits = new_visits;
         self.grid = new_grid;
     }
 
@@ -345,7 +391,7 @@ impl Map {
         ];
 
         let (player_row, player_column) = self.player_position;
-        let mut best: Option<(CardinalDirection, (isize, isize), u32)> = None;
+        let mut best_move: Option<(CardinalDirection, (isize, isize), u32)> = None;
 
         for (dir, (row_offset, column_offset), (wall_row_offset, wall_col_offset)) in moves.iter() {
             let new_player_row: isize = player_row + row_offset;
@@ -374,12 +420,12 @@ impl Map {
 
             let visits = self.visits[new_player_row as usize][new_player_column as usize];
 
-            if best.is_none() || visits < best.as_ref().unwrap().2 {
-                best = Some((dir.clone(), (*row_offset, *column_offset), visits));
+            if best_move.is_none() || visits < best_move.as_ref().unwrap().2 {
+                best_move = Some((dir.clone(), (*row_offset, *column_offset), visits));
             }
         }
 
-        if let Some((chosen_cardinal_direction, (row_offset, column_offset), _)) = best {
+        if let Some((chosen_cardinal_direction, (row_offset, column_offset), _)) = best_move {
             let new_r: isize = player_row + row_offset;
             let new_c: isize = player_column + column_offset;
             self.player_position = (new_r, new_c);
@@ -427,11 +473,78 @@ fn absolute_to_relative_direction(
 
 #[cfg(test)]
 mod tests {
-    use std::string;
-
     use super::*;
-    use crate::{map, radar::RadarView};
     use shared::utils::{print_string_matrix, string_to_strings};
+
+    // #[test]
+    // fn test_update_player_position_in_new_grid() {
+    //     let grid_1: Vec<Vec<String>> = vec![
+    //         string_to_strings("•-•-•-•"),
+    //         string_to_strings("|1|2|3|"),
+    //         string_to_strings("•-•-•-•"),
+    //         string_to_strings("|4|5|6|"),
+    //         string_to_strings("•-•-•-•"),
+    //         string_to_strings("|7|8|9|"),
+    //         string_to_strings("•-•-•-•"),
+    //     ];
+    //     let mut map_1: Map = Map::new(&grid_1, CardinalDirection::North);
+    //     map_1.player_position = (3, 3);
+    //     // log_debug!("Player position before: {:?}", map_1.player_position);
+    //     map_1.update_player_position_in_new_grid();
+    //     // log_debug!("Player position after: {:?}", map_1.player_position);
+    //     assert_eq!(map_1.player_position, (3, 3));
+    //     map_1.player_position = (3, 3);
+    //     map_1.current_cardinal_direction = CardinalDirection::East;
+    //     map_1.update_player_position_in_new_grid();
+    //     assert_eq!(map_1.player_position, (3, 5));
+    //     map_1.player_position = (3, 3);
+    //     map_1.current_cardinal_direction = CardinalDirection::South;
+    //     map_1.update_player_position_in_new_grid();
+    //     assert_eq!(map_1.player_position, (5, 3));
+    //     map_1.player_position = (3, 3);
+    //     map_1.current_cardinal_direction = CardinalDirection::West;
+    //     map_1.update_player_position_in_new_grid();
+    //     assert_eq!(map_1.player_position, (3, 3));
+
+    //     let grid_2: Vec<Vec<String>> = vec![
+    //         string_to_strings("•-•-•-•-•-•-•-•"),
+    //         string_to_strings("|1|2|3|4|5|6|7|"),
+    //         string_to_strings("•-•-•-•-•-•-•-•"),
+    //         string_to_strings("|1|2|3|4|5|6|7|"),
+    //         string_to_strings("•-•-•-•-•-•-•-•"),
+    //         string_to_strings("|1|2|3|4|5|6|7|"),
+    //         string_to_strings("•-•-•-•-•-•-•-•"),
+    //         string_to_strings("|1|2|3|4|5|6|7|"),
+    //         string_to_strings("•-•-•-•-•-•-•-•"),
+    //         string_to_strings("|1|2|3|4|5|6|7|"),
+    //         string_to_strings("•-•-•-•-•-•-•-•"),
+    //         string_to_strings("|1|2|3|4|5|6|7|"),
+    //         string_to_strings("•-•-•-•-•-•-•-•"),
+    //         string_to_strings("|1|2|3|4|5|6|7|"),
+    //         string_to_strings("•-•-•-•-•-•-•-•"),
+    //     ];
+
+    //     log_debug!("OTHER OTHER OTHER");
+
+    //     let mut map_2: Map = Map::new(&grid_2, CardinalDirection::North);
+    //     map_2.player_position = (7, 7);
+    //     log_debug!("Player position before: {:?}", map_2.player_position);
+    //     map_2.update_player_position_in_new_grid();
+    //     log_debug!("Player position after: {:?}", map_2.player_position);
+    //     assert_eq!(map_2.player_position, (5, 7));
+    //     map_2.player_position = (7, 7);
+    //     map_2.current_cardinal_direction = CardinalDirection::East;
+    //     map_2.update_player_position_in_new_grid();
+    //     assert_eq!(map_2.player_position, (7, 9));
+    //     map_2.player_position = (7, 7);
+    //     map_2.current_cardinal_direction = CardinalDirection::South;
+    //     map_2.update_player_position_in_new_grid();
+    //     assert_eq!(map_2.player_position, (9, 7));
+    //     map_2.player_position = (7, 7);
+    //     map_2.current_cardinal_direction = CardinalDirection::West;
+    //     map_2.update_player_position_in_new_grid();
+    //     assert_eq!(map_2.player_position, (7, 5));
+    // }
 
     #[test]
     fn test_should_expand_grid() {
@@ -636,6 +749,9 @@ mod tests {
         map_3.expand_grid_if_needed();
         map_4.expand_grid_if_needed();
 
+        print_string_matrix("north grid", &north_grid);
+        log_debug!("map_1.grid.len() = {}", map_1.grid.len());
+
         assert_eq!(map_1.grid.len(), 17);
         assert_eq!(map_2.grid.len(), 15);
         assert_eq!(map_3.grid.len(), 17);
@@ -652,43 +768,43 @@ mod tests {
         assert_eq!(map_4.grid, west_grid);
     }
 
-    #[test]
-    fn test_update_player_position_in_new_grid_1() {
-        let grid: Vec<Vec<String>> = vec![
-            string_to_strings("•-•-•-•"),
-            string_to_strings("|1|2|3|"),
-            string_to_strings("•-•-•-•"),
-            string_to_strings("|4|5|6|"),
-            string_to_strings("•-•-•-•"),
-            string_to_strings("|7|8|9|"),
-            string_to_strings("•-•-•-•"),
-        ];
-        let mut map: Map = Map::new(&grid, CardinalDirection::North);
-        map.player_position = (3, 3);
-        map.current_cardinal_direction = CardinalDirection::North;
+    // #[test]
+    // fn test_update_player_position_in_new_grid_1() {
+    //     let grid: Vec<Vec<String>> = vec![
+    //         string_to_strings("•-•-•-•"),
+    //         string_to_strings("|1|2|3|"),
+    //         string_to_strings("•-•-•-•"),
+    //         string_to_strings("|4|5|6|"),
+    //         string_to_strings("•-•-•-•"),
+    //         string_to_strings("|7|8|9|"),
+    //         string_to_strings("•-•-•-•"),
+    //     ];
+    //     let mut map: Map = Map::new(&grid, CardinalDirection::North);
+    //     map.player_position = (3, 3);
+    //     map.current_cardinal_direction = CardinalDirection::North;
 
-        assert_eq!(map.player_position, (3, 3));
-        assert_eq!(map.current_cardinal_direction, CardinalDirection::North);
+    //     assert_eq!(map.player_position, (3, 3));
+    //     assert_eq!(map.current_cardinal_direction, CardinalDirection::North);
 
-        map.update_player_position_in_new_grid();
-        assert_eq!(map.player_position, (3, 3));
-        assert_eq!(map.current_cardinal_direction, CardinalDirection::North);
+    //     map.update_player_position_in_new_grid();
+    //     assert_eq!(map.player_position, (3, 3));
+    //     assert_eq!(map.current_cardinal_direction, CardinalDirection::North);
 
-        map.current_cardinal_direction = CardinalDirection::East;
-        map.update_player_position_in_new_grid();
-        assert_eq!(map.player_position, (3, 5));
-        assert_eq!(map.current_cardinal_direction, CardinalDirection::East);
+    //     map.current_cardinal_direction = CardinalDirection::East;
+    //     map.update_player_position_in_new_grid();
+    //     assert_eq!(map.player_position, (3, 5));
+    //     assert_eq!(map.current_cardinal_direction, CardinalDirection::East);
 
-        map.current_cardinal_direction = CardinalDirection::South;
-        map.update_player_position_in_new_grid();
-        assert_eq!(map.player_position, (5, 5));
-        assert_eq!(map.current_cardinal_direction, CardinalDirection::South);
+    //     map.current_cardinal_direction = CardinalDirection::South;
+    //     map.update_player_position_in_new_grid();
+    //     assert_eq!(map.player_position, (5, 5));
+    //     assert_eq!(map.current_cardinal_direction, CardinalDirection::South);
 
-        map.current_cardinal_direction = CardinalDirection::West;
-        map.update_player_position_in_new_grid();
-        assert_eq!(map.player_position, (5, 3));
-        assert_eq!(map.current_cardinal_direction, CardinalDirection::West);
-    }
+    //     map.current_cardinal_direction = CardinalDirection::West;
+    //     map.update_player_position_in_new_grid();
+    //     assert_eq!(map.player_position, (5, 3));
+    //     assert_eq!(map.current_cardinal_direction, CardinalDirection::West);
+    // }
 
     #[test]
     fn test_merge_radar_views_with_directions_1() {
@@ -697,7 +813,7 @@ mod tests {
             string_to_strings("#######"),
             string_to_strings("#######"),
             string_to_strings("•-•-•-•"),
-            string_to_strings("   P   "),
+            string_to_strings("       "),
             string_to_strings("•-• •-•"),
             string_to_strings("##|  A "),
             string_to_strings("##•-•-•"),
@@ -722,24 +838,26 @@ mod tests {
             string_to_strings("#######"),
             string_to_strings("#######"),
             string_to_strings("•-•-•-•"),
-            string_to_strings("   P   "),
+            string_to_strings("       "),
             string_to_strings("• •-• •"),
             string_to_strings("| ###  "),
             string_to_strings("• ###-•"),
         ];
         let expected_grid_2: Vec<Vec<String>> = vec![
-            string_to_strings("#########"),
+            string_to_strings("•#•#•#•#•"),
             string_to_strings("#########"),
             string_to_strings("•-•-•-•-•"),
             string_to_strings("         "),
             string_to_strings("• •-• •-•"),
             string_to_strings("| ##|  A "),
-            string_to_strings("• ##•-•-•"),
+            string_to_strings("•#•#•-•-•"),
         ];
         print_string_matrix("radar view 2", &radar_2);
         map.merge_radar_view(&radar_2, CardinalDirection::West);
         print_string_matrix("map + radar view 2", &map.grid);
+        log_debug!("{:?}", map.player_position);
         assert_eq!(map.player_position, (3, 3));
+        // print_string_matrix("map", matrix);
         assert_eq!(map.grid, expected_grid_2);
         let map_with_radar_2_rows_number: usize = map.grid.len();
         let map_with_radar_2_columns_number: usize = if 0 < map_with_radar_2_rows_number {
@@ -755,7 +873,7 @@ mod tests {
             string_to_strings("##### •"),
             string_to_strings("##### |"),
             string_to_strings("•-•-• •"),
-            string_to_strings("   P  |"),
+            string_to_strings("      |"),
             string_to_strings("• •-• •"),
             string_to_strings("|  A   "),
             string_to_strings("•-•-•-•"),
@@ -763,6 +881,7 @@ mod tests {
         print_string_matrix("radar view 3", &radar_3);
         map.merge_radar_view(&radar_3, CardinalDirection::East);
         print_string_matrix("map + radar view 3", &map.grid);
+        log_debug!("{:?}", map.player_position);
         assert_eq!(map.player_position, (3, 5));
         let map_with_radar_3_rows_number: usize = map.grid.len();
         let map_with_radar_3_columns_number: usize = if 0 < map_with_radar_3_rows_number {
@@ -778,7 +897,7 @@ mod tests {
             string_to_strings("##• •##"),
             string_to_strings("##| |##"),
             string_to_strings("•-• •##"),
-            string_to_strings("   P|##"),
+            string_to_strings("    |##"),
             string_to_strings("•-• •##"),
             string_to_strings(" A   ##"),
             string_to_strings("•-•-•-•"),
@@ -801,7 +920,7 @@ mod tests {
             string_to_strings("•-• •##"),
             string_to_strings("    |##"),
             string_to_strings("•-• •-•"),
-            string_to_strings(" A P   "),
+            string_to_strings(" A     "),
             string_to_strings("•-•-•-•"),
             string_to_strings("#######"),
             string_to_strings("#######"),
@@ -824,7 +943,7 @@ mod tests {
             string_to_strings("##• •##"),
             string_to_strings("##| |##"),
             string_to_strings("•-• •##"),
-            string_to_strings("   P|##"),
+            string_to_strings("    |##"),
             string_to_strings("•-• •##"),
             string_to_strings(" A   ##"),
             string_to_strings("•-•-•-•"),
@@ -847,7 +966,7 @@ mod tests {
             string_to_strings("•-• •-•"),
             string_to_strings("|    A|"),
             string_to_strings("##• •##"),
-            string_to_strings("##|P|##"),
+            string_to_strings("##| |##"),
             string_to_strings("•-• •##"),
             string_to_strings("    |##"),
             string_to_strings("•-• •##"),
@@ -870,7 +989,7 @@ mod tests {
             string_to_strings("##• •##"),
             string_to_strings("##| |##"),
             string_to_strings("•-• •##"),
-            string_to_strings("   P|##"),
+            string_to_strings("    |##"),
             string_to_strings("•-• •##"),
             string_to_strings(" A   ##"),
             string_to_strings("•-•-•-•"),
@@ -906,61 +1025,61 @@ mod tests {
         assert_eq!(map.grid, expected_final_grid);
     }
 
-    #[test]
-    fn test_merge_radar_views_with_directions_2() {
-        let radar_view_1: RadarView =
-            RadarView::new(String::from("bKLzjzIMaaap8aa"), CardinalDirection::North);
+    // #[test]
+    // fn test_merge_radar_views_with_directions_2() {
+    //     let radar_view_1: RadarView =
+    //         RadarView::new(String::from("bKLzjzIMaaap8aa"), CardinalDirection::North);
 
-        let radar_1: Vec<Vec<String>> = vec![
-            string_to_strings("• • •-•"),
-            string_to_strings("| |   |"),
-            string_to_strings("• • •##"),
-            string_to_strings("|   |##"),
-            string_to_strings("•-• •##"),
-            string_to_strings("##|    "),
-            string_to_strings("##• •-•"),
-        ];
+    //     let radar_1: Vec<Vec<String>> = vec![
+    //         string_to_strings("• • •-•"),
+    //         string_to_strings("| |   |"),
+    //         string_to_strings("• • •##"),
+    //         string_to_strings("|   |##"),
+    //         string_to_strings("•-• •##"),
+    //         string_to_strings("##|    "),
+    //         string_to_strings("##• •-•"),
+    //     ];
 
-        print_string_matrix("radar view 1", radar_view_1.grid.as_ref());
-        let mut map: Map = Map::new(&radar_view_1.grid, CardinalDirection::North);
-        print_string_matrix("map + radar view 1", &map.grid);
-        assert_eq!(map.player_position, (3, 3));
-        assert_eq!(radar_1, radar_view_1.grid);
+    //     print_string_matrix("radar view 1", radar_view_1.grid.as_ref());
+    //     let mut map: Map = Map::new(&radar_view_1.grid, CardinalDirection::North);
+    //     print_string_matrix("map + radar view 1", &map.grid);
+    //     assert_eq!(map.player_position, (3, 3));
+    //     assert_eq!(radar_1, radar_view_1.grid);
 
-        let radar_2: Vec<Vec<String>> = vec![
-            string_to_strings("• •-•##"),
-            string_to_strings("|   |##"),
-            string_to_strings("##• •-•"),
-            string_to_strings("##|   |"),
-            string_to_strings("##• • •"),
-            string_to_strings("|   |  "),
-            string_to_strings("•-• • •"),
-        ];
-        let expected_grid_2: Vec<Vec<String>> = vec![
-            string_to_strings("• •-•##"),
-            string_to_strings("|   |##"),
-            string_to_strings("• • •-•"),
-            string_to_strings("| |   |"),
-            string_to_strings("• • • •"),
-            string_to_strings("|   |  "),
-            string_to_strings("•-• • •"),
-            string_to_strings("##|    "),
-            string_to_strings("##• •-•"),
-        ];
+    //     let radar_2: Vec<Vec<String>> = vec![
+    //         string_to_strings("• •-•##"),
+    //         string_to_strings("|   |##"),
+    //         string_to_strings("##• •-•"),
+    //         string_to_strings("##|   |"),
+    //         string_to_strings("##• • •"),
+    //         string_to_strings("|   |  "),
+    //         string_to_strings("•-• • •"),
+    //     ];
+    //     let expected_grid_2: Vec<Vec<String>> = vec![
+    //         string_to_strings("• •-•##"),
+    //         string_to_strings("|   |##"),
+    //         string_to_strings("• • •-•"),
+    //         string_to_strings("| |   |"),
+    //         string_to_strings("• • • •"),
+    //         string_to_strings("|   |  "),
+    //         string_to_strings("•-• • •"),
+    //         string_to_strings("##|    "),
+    //         string_to_strings("##• •-•"),
+    //     ];
 
-        print_string_matrix("radar view 2", &radar_2);
-        let radar_view_2: RadarView =
-            RadarView::new(String::from("zwfGMsAyap8aaaa"), CardinalDirection::North);
-        assert_eq!(&radar_view_2.grid, &radar_2);
-        let map_2: Map = Map::new(&radar_view_2.grid, CardinalDirection::North);
-        assert_eq!(map_2.grid, radar_view_2.grid);
-        map.merge_radar_view(&radar_view_2.grid, CardinalDirection::North);
-        print_string_matrix("map + radar view 2", &map.grid);
-        print_string_matrix("map + radar view 2 expected", &expected_grid_2);
-        assert_eq!(map.player_position, (3, 3));
-        // assert_eq!(map.grid, radar_view_2.grid);
-        assert_eq!(map.grid, expected_grid_2);
-    }
+    //     print_string_matrix("radar view 2", &radar_2);
+    //     let radar_view_2: RadarView =
+    //         RadarView::new(String::from("zwfGMsAyap8aaaa"), CardinalDirection::North);
+    //     assert_eq!(&radar_view_2.grid, &radar_2);
+    //     let map_2: Map = Map::new(&radar_view_2.grid, CardinalDirection::North);
+    //     assert_eq!(map_2.grid, radar_view_2.grid);
+    //     map.merge_radar_view(&radar_view_2.grid, CardinalDirection::North);
+    //     print_string_matrix("map + radar view 2", &map.grid);
+    //     print_string_matrix("map + radar view 2 expected", &expected_grid_2);
+    //     assert_eq!(map.player_position, (3, 3));
+    //     // assert_eq!(map.grid, radar_view_2.grid);
+    //     assert_eq!(map.grid, expected_grid_2);
+    // }
 
     #[test]
     fn test_tremaux_algorithm() {

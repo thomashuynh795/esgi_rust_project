@@ -57,7 +57,7 @@ fn main() -> io::Result<()> {
     print_string_matrix("Updated map", &map.grid.as_ref());
 
     let mut i: i32 = 0;
-    for _ in 0..7 {
+    loop {
         match map.next_move_tremaux() {
             Some((relative_direction, chosen_cardinal_direction)) => {
                 i += 1;
@@ -96,7 +96,7 @@ fn main() -> io::Result<()> {
                         log_warning!("Unexpected message received.");
                     }
                 }
-                thread::sleep(Duration::from_millis(10));
+                thread::sleep(Duration::from_millis(500));
             }
             None => {
                 log_info!("No more possible moves. Stopping exploration.\n");

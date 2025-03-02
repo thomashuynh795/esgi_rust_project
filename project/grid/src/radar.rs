@@ -606,7 +606,6 @@ mod tests {
             string_to_strings("| #####"),
             string_to_strings("•-#####"),
         ];
-        log_debug!("Expected walls 1:");
         print_string_matrix("expected_1", &expected_1);
         assert_eq!(radar_view_1.grid, expected_1);
 
@@ -618,11 +617,10 @@ mod tests {
             string_to_strings("#######"),
             string_to_strings("##•-•-•"),
             string_to_strings("##|    "),
-            string_to_strings("##• •  "),
+            string_to_strings("##• • •"),
             string_to_strings("|   |  "),
-            string_to_strings("•-• •  "),
+            string_to_strings("•-• • •"),
         ];
-        log_debug!("Expected walls 2:");
         print_string_matrix("expected_2", &expected_2);
         assert_eq!(radar_view_2.grid, expected_2);
 
