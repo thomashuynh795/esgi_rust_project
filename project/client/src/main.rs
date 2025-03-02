@@ -37,6 +37,7 @@ fn main() -> io::Result<()> {
         team.add_player(&player_name, server_address)?;
     }
 
+    // Creates a shared turn state protected by a mutex and a conditional variable.
     let turn_state: Arc<(Mutex<TurnState>, Condvar)> = Arc::new((
         Mutex::new(TurnState {
             current: 0,
@@ -45,22 +46,33 @@ fn main() -> io::Result<()> {
         Condvar::new(),
     ));
 
-    let mut handles: Vec<thread::JoinHandle<Result<(), io::Error>>> =
+    // Creates an empty vector to store the players threads.
+    let mut threads: Vec<thread::JoinHandle<Result<(), io::Error>>> =
         Vec::with_capacity(team.players.len());
+    // Fills the vector with the players threads.
     for (player_id, player) in team.players.into_iter().enumerate() {
+        // Clones the shared turn state to give a reference to each player. The reference is moved to the player thread to allow each player to access the shared state.
+        // Clone here is not a traditional clone, it is a reference count incrementation to allow multiple ownership of the same data instead of copying it.
         let turn_state: Arc<(Mutex<TurnState>, Condvar)> = Arc::clone(&turn_state);
 
-        let handle: thread::JoinHandle<Result<(), io::Error>> =
+        // Creates a thread for each player.
+        let thread: thread::JoinHandle<Result<(), io::Error>> =
+        // The `move` keyword is used to move ownership of the variables to the thread. This is necessary because the thread may outlive the current scope.
             thread::spawn(move || -> io::Result<()> {
                 player.play(player_id, turn_state, PLAYERS_NUMBER)?;
-                Ok(())
+                return Ok(());
             });
-        handles.push(handle);
+        // Adds the thread to the vector.
+        threads.push(thread);
     }
 
-    for handle in handles {
-        if let Err(e) = handle.join() {
+    for thread in threads {
+        if let Err(e) = thread.join() {
             log_error!("A thread has panicked: {:?}", e);
+
+            /*===========================================
+                TEST MINI SERVER PART
+            ===========================================*/
 
             // let encoded_radar: String = register_player(
             //     &mut stream.lock().unwrap(),
