@@ -44,6 +44,7 @@ fn main() -> io::Result<()> {
         &registration_token,
         &player_name,
     )?;
+    print!("Received radar view: {}", encoded_radar);
     let radar_view_1: RadarView = RadarView::new(encoded_radar, CardinalDirection::North);
 
     log_debug!("Cardinal direction: {:?}", radar_view_1.cardinal_direction);
@@ -57,20 +58,39 @@ fn main() -> io::Result<()> {
     print_string_matrix("Updated map", &map.grid.as_ref());
 
     let mut i: i32 = 0;
-    for _ in 0..7 {
+    for _ in 0..8 {
         match map.next_move_tremaux() {
             Some((relative_direction, chosen_cardinal_direction)) => {
                 i += 1;
-                log_info!("\n");
-                log_info!("ITERATION: {}\n", i);
+                log_info!("ITERATION: {}", i);
                 log_info!("Next move to send: {:?}", relative_direction);
 
                 let action: GameMessage = GameMessage::Action(Action::MoveTo(relative_direction));
-                {
-                    let mut stream_lock: std::sync::MutexGuard<'_, TcpStream> =
-                        stream.lock().unwrap();
-                    action.send(&mut stream_lock)?;
-                    log_info!("Action sent.");
+                let mut action_sent = false;
+                while !action_sent {
+                    {
+                        let mut stream_lock: std::sync::MutexGuard<'_, TcpStream> =
+                            stream.lock().unwrap();
+                        match action.send(&mut stream_lock) {
+                            Ok(_) => {
+                                log_info!("Action sent.");
+                                action_sent = true;
+                                break;
+                            }
+                            Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
+                                log_warning!("Broken pipe error, attempting to reconnect...");
+                                *stream_lock = connect_to_server(server_address)?;
+                            }
+                            Err(e) => return Err(e),
+                        }
+                    }
+                    thread::sleep(Duration::from_millis(10));
+                }
+                if !action_sent {
+                    return Err(io::Error::new(
+                        io::ErrorKind::BrokenPipe,
+                        "Failed to send action after multiple attempts",
+                    ));
                 }
 
                 let response: GameMessage;
