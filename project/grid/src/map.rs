@@ -1,7 +1,6 @@
 use shared::log_debug;
 use shared::types::action::RelativeDirection;
 use shared::types::cardinal_direction::CardinalDirection;
-use shared::utils::print_string_matrix;
 
 pub struct Map {
     pub player_position: (isize, isize),
@@ -39,33 +38,50 @@ impl Map {
         new_view: &Vec<Vec<String>>,
         move_direction: CardinalDirection,
     ) -> () {
-        log_debug!(
-            "merge_radar_view >>> Cardinal direction: {:?}",
-            move_direction
-        );
+        // log_debug!(
+        //     "merge_radar_view >>> Cardinal direction: {:?}",
+        //     move_direction
+        // );
         self.current_cardinal_direction = move_direction;
-        print_string_matrix("merge_radar_view >>> Map before update", &self.grid);
-        log_debug!("merge_radar_view >>> Rows number: {}", self.grid.len());
-        log_debug!(
-            "merge_radar_view >>> Columns number: {}",
-            self.grid[0].len()
-        );
+        // print_string_matrix("merge_radar_view >>> Map before update", &self.grid);
+        // log_debug!("merge_radar_view >>> Rows number: {}", self.grid.len());
+        // log_debug!(
+        //     "merge_radar_view >>> Columns number: {}",
+        //     self.grid[0].len()
+        // );
         self.expand_grid_if_needed();
-        print_string_matrix("merge_radar_view >>> Map after expansion", &self.grid);
-        log_debug!("merge_radar_view >>> Rows number: {}", self.grid.len());
-        log_debug!(
-            "merge_radar_view >>> Columns number: {}",
-            self.grid[0].len()
-        );
+        // print_string_matrix("merge_radar_view >>> Map after expansion", &self.grid);
+        // log_debug!("merge_radar_view >>> Rows number: {}", self.grid.len());
+        // log_debug!(
+        //     "merge_radar_view >>> Columns number: {}",
+        //     self.grid[0].len()
+        // );
         self.merge_radar_view_to_map_grid(new_view);
     }
 
     pub fn merge_radar_view_to_map_grid(&mut self, new_view: &Vec<Vec<String>>) {
         let view_size: usize = 7;
-        let lowest_row: usize = self.player_position.0 as usize - 3;
-        let lowest_col: usize = self.player_position.1 as usize - 3;
+        let player_row: usize = self.player_position.0 as usize;
+        let player_col: usize = self.player_position.1 as usize;
+
+        let mut lowest_row: usize = if player_row >= 3 { player_row - 3 } else { 0 };
+        let mut lowest_col: usize = if player_col >= 3 { player_col - 3 } else { 0 };
+
+        if self.grid.len() >= view_size {
+            lowest_row = lowest_row.min(self.grid.len() - view_size);
+        }
+        if self.grid[0].len() >= view_size {
+            lowest_col = lowest_col.min(self.grid[0].len() - view_size);
+        }
+
+        log_debug!(
+            "grid rows: {} cols: {}",
+            self.grid.len(),
+            self.grid[0].len()
+        );
         for i in 0..view_size {
             for j in 0..view_size {
+                log_debug!("merging cell ({}, {})", i, j);
                 self.grid[lowest_row + i][lowest_col + j] = Map::select_string_to_save(
                     &self.grid[lowest_row + i][lowest_col + j],
                     &new_view[i][j],
@@ -127,27 +143,17 @@ impl Map {
         let mut expand_bottom: isize = 0;
         let mut expand_right: isize = 0;
 
-        match self.current_cardinal_direction {
-            CardinalDirection::North => {
-                if self.player_position.0 - 3 <= 0 {
-                    expand_top = 2;
-                }
-            }
-            CardinalDirection::East => {
-                if self.player_position.1 + 3 >= grid_cols {
-                    expand_right = 2;
-                }
-            }
-            CardinalDirection::South => {
-                if self.player_position.0 + 3 >= grid_rows {
-                    expand_bottom = 2;
-                }
-            }
-            CardinalDirection::West => {
-                if self.player_position.1 - 3 <= 0 {
-                    expand_left = 2;
-                }
-            }
+        if self.player_position.0 - 3 < 0 {
+            expand_top = 2;
+        }
+        if self.player_position.0 + 3 >= grid_rows {
+            expand_bottom = 2;
+        }
+        if self.player_position.1 - 3 < 0 {
+            expand_left = 2;
+        }
+        if self.player_position.1 + 3 >= grid_cols {
+            expand_right = 2;
         }
 
         let new_rows: isize = grid_rows + expand_top + expand_bottom;
@@ -159,7 +165,6 @@ impl Map {
 
         let mut new_grid: Vec<Vec<String>> =
             vec![vec![String::from("#"); new_cols as usize]; new_rows as usize];
-
         for i in 0..grid_rows {
             for j in 0..grid_cols {
                 new_grid[(i + expand_top) as usize][(j + expand_left) as usize] =
@@ -170,8 +175,8 @@ impl Map {
         self.player_position.0 += expand_top;
         self.player_position.1 += expand_left;
 
-        let old_visit_rows: isize = self.visits.len() as isize;
-        let old_visit_cols: isize = if old_visit_rows == 0 {
+        let old_visit_rows = self.visits.len() as isize;
+        let old_visit_cols = if old_visit_rows == 0 {
             0
         } else {
             self.visits[0].len() as isize
@@ -185,31 +190,6 @@ impl Map {
         }
         self.visits = new_visits;
         self.grid = new_grid;
-    }
-
-    fn merge_visits(
-        saved: &Vec<Vec<u32>>,
-        overall_top: isize,
-        overall_left: isize,
-        new_rows: usize,
-        new_cols: usize,
-    ) -> Vec<Vec<u32>> {
-        let mut merged: Vec<Vec<u32>> = vec![vec![0; new_cols]; new_rows];
-        let saved_rows: isize = saved.len() as isize;
-        let saved_cols: isize = if saved.is_empty() {
-            0
-        } else {
-            saved[0].len() as isize
-        };
-        let offset_row: isize = -overall_top;
-        let offset_col: isize = -overall_left;
-        for i in 0..saved_rows {
-            for j in 0..saved_cols {
-                merged[(i + offset_row) as usize][(j + offset_col) as usize] =
-                    saved[i as usize][j as usize];
-            }
-        }
-        return merged;
     }
 
     pub fn next_move_tremaux(&mut self) -> Option<(RelativeDirection, CardinalDirection)> {

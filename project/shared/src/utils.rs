@@ -137,7 +137,7 @@ pub fn register_team(stream: &mut TcpStream) -> io::Result<String> {
 
     match GameMessage::receive(stream)? {
         GameMessage::RegisterTeamResult(RegisterTeamResult::Ok {
-            expected_players,
+            expected_players: _,
             registration_token,
         }) => {
             return Ok(registration_token);

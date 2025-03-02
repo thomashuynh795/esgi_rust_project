@@ -18,6 +18,7 @@ use std::time::Duration;
 const PLAYERS_NUMBER: usize = 1;
 
 fn main() -> io::Result<()> {
+    env::set_var("RUST_BACKTRACE", "full");
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         log_error!("Prompt: worker <server_address>");
@@ -60,9 +61,6 @@ fn main() -> io::Result<()> {
         match map.next_move_tremaux() {
             Some((relative_direction, chosen_cardinal_direction)) => {
                 i += 1;
-                log_info!("\n");
-                log_info!("ITERATION: {}\n", i);
-                log_info!("Next move to send: {:?}", relative_direction);
 
                 let action: GameMessage = GameMessage::Action(Action::MoveTo(relative_direction));
                 {
