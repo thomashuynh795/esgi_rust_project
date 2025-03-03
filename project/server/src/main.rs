@@ -58,3 +58,31 @@ fn handle_connection(stream: &mut TcpStream) -> Result<(), IoError> {
     }
     return Ok(());
 }
+
+#[test]
+fn test_register_team() {
+    // do a server in a separate thread then call it
+    std::thread::spawn(|| {
+        main();
+    });
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    let mut stream = TcpStream::connect("127.0.0.1:8778").unwrap();
+    let register_team = GameMessage::RegisterTeam(shared::types::message::RegisterTeam {
+        name: "team_1".to_string(),
+    });
+    register_team.send(&mut stream).unwrap();
+    let response = GameMessage::receive(&mut stream).unwrap();
+    match response {
+        GameMessage::RegisterTeamResult(register_team_result) => match register_team_result {
+            RegisterTeamResult::Ok {
+                expected_players,
+                registration_token,
+            } => {
+                assert_eq!(expected_players, 1);
+                assert_eq!(registration_token.len(), 36);
+            }
+            _ => panic!("Invalid response"),
+        },
+        _ => panic!("Invalid response"),
+    }
+}
