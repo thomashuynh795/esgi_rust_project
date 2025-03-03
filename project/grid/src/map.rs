@@ -1,7 +1,8 @@
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use shared::log_debug;
 use shared::types::action::RelativeDirection;
 use shared::types::cardinal_direction::CardinalDirection;
-use shared::utils::print_string_matrix;
 
 pub struct Map {
     pub player_position: (isize, isize),
@@ -96,6 +97,92 @@ impl Map {
         }
     }
 
+    pub fn next_move_random(&mut self) -> Option<(RelativeDirection, CardinalDirection)> {
+        let moves: [(
+            CardinalDirection,
+            RelativeDirection,
+            (isize, isize),
+            (isize, isize),
+        ); 4] = [
+            (
+                CardinalDirection::North,
+                RelativeDirection::Front,
+                (-2, 0),
+                (-1, 0),
+            ),
+            (
+                CardinalDirection::East,
+                RelativeDirection::Right,
+                (0, 2),
+                (0, 1),
+            ),
+            (
+                CardinalDirection::South,
+                RelativeDirection::Back,
+                (2, 0),
+                (1, 0),
+            ),
+            (
+                CardinalDirection::West,
+                RelativeDirection::Left,
+                (0, -2),
+                (0, -1),
+            ),
+        ];
+
+        let (player_row, player_column) = self.player_position;
+        let mut prioritized_moves: Vec<(CardinalDirection, RelativeDirection, isize, isize)> =
+            Vec::new();
+
+        for (dir, rel_dir, (row_offset, col_offset), (wall_row_offset, wall_col_offset)) in &moves {
+            let new_player_row: isize = player_row + row_offset;
+            let new_player_column: isize = player_column + col_offset;
+            let wall_row: isize = player_row + wall_row_offset;
+            let wall_col: isize = player_column + wall_col_offset;
+
+            if new_player_row < 0
+                || new_player_column < 0
+                || self.grid.len() as isize <= new_player_row
+                || self.grid[0].len() as isize <= new_player_column
+            {
+                continue;
+            }
+
+            let wall: &String = &self.grid[wall_row as usize][wall_col as usize];
+            if wall == "-" || wall == "|" {
+                continue;
+            }
+
+            let cell = &self.grid[new_player_row as usize][new_player_column as usize];
+            if cell == "•" || cell == "-" || cell == "|" {
+                continue;
+            }
+
+            prioritized_moves.push((dir.clone(), rel_dir.clone(), *row_offset, *col_offset));
+        }
+
+        prioritized_moves.sort_by_key(|(_, rel_dir, _, _)| match rel_dir {
+            RelativeDirection::Front => 1,
+            RelativeDirection::Left => 2,
+            RelativeDirection::Right => 2,
+            RelativeDirection::Back => 3,
+        });
+
+        if let Some((chosen_dir, chosen_rel_dir, row_offset, col_offset)) =
+            prioritized_moves.choose(&mut thread_rng())
+        {
+            let new_r: isize = player_row + row_offset;
+            let new_c: isize = player_column + col_offset;
+            self.player_position = (new_r, new_c);
+            self.visits[new_r as usize][new_c as usize] += 1;
+
+            self.current_cardinal_direction = chosen_dir.clone();
+            Some((chosen_rel_dir.clone(), chosen_dir.clone()))
+        } else {
+            None
+        }
+    }
+
     pub fn should_expand_grid(&self, next_cardinal_direction: CardinalDirection) -> bool {
         let (row_offset, col_offset) = match next_cardinal_direction {
             CardinalDirection::North => (-2, 0),
@@ -149,7 +236,8 @@ impl Map {
             return;
         }
 
-        let mut new_grid: Vec<Vec<String>> = vec![vec![String::from("#"); new_cols as usize]; new_rows as usize];
+        let mut new_grid: Vec<Vec<String>> =
+            vec![vec![String::from("#"); new_cols as usize]; new_rows as usize];
         for i in 0..grid_rows {
             for j in 0..grid_cols {
                 new_grid[(i + expand_top) as usize][(j + expand_left) as usize] =

@@ -127,10 +127,22 @@ impl Player {
         turn_state: Arc<(Mutex<TurnState>, Condvar)>,
         total_players: usize,
     ) -> io::Result<()> {
-        let mut has_finished: bool = false;
+        let has_finished: bool = false;
         loop {
             let (lock, cvar) = &*turn_state;
-            let mut state: std::sync::MutexGuard<'_, TurnState> = lock.lock().unwrap();
+
+            // Safely unwraps the MutexGuard.
+            let mut state: std::sync::MutexGuard<'_, TurnState> = match lock.lock() {
+                Ok(state) => state,
+                Err(poisoned) => {
+                    log_warning!(
+                        "{}: Mutex is poisoned. The data you are using may be corrupted",
+                        self.name
+                    );
+                    poisoned.into_inner()
+                }
+            };
+
             while state.current != player_id && !state.game_over {
                 state = cvar.wait(state).unwrap();
             }
@@ -203,9 +215,7 @@ impl Player {
                                             self.solve_global_challenge(total_players)?;
                                         }
                                     }
-                                    ActionError::InvalidChallengeSolution => {
-
-                                    }
+                                    ActionError::InvalidChallengeSolution => {}
                                     _ => {
                                         log_warning!(
                                             "{} has performed a bad action: {:?}",
